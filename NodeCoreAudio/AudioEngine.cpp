@@ -241,9 +241,23 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 	Local<Value> argv[argc] = { Local<Value>::New(engine->m_uSampleFrames), engine->m_inputBuffer };
 
 	Handle<Function> func = Handle<Function>::Cast( args[0] );
-	Handle<Value> result = func->Call( args.This(), argc, argv );
+	v8::Handle<Object> result = v8::Handle<Object>::Cast(func->Call( args.This(), argc, argv ) );
 
-	//engine->m_audioCallback->Call( Context::GetCurrent()->Global(), argc, argv );
+	int length = 0;
+	if( !result->IsArray() ) {
+		return ThrowException( Exception::TypeError(String::New("Must return output buffer from processing function")) );
+	} else {
+		length = result->Get(v8::String::New("length"))->ToObject()->Uint32Value();
+	}
+
+	for (int iSample = 0; iSample < length; iSample++) {
+		v8::Local<v8::Value> element = result->Get(iSample);
+
+		float fSample= element->NumberValue();
+		engine->m_fOutputNonProcessSamples[0][iSample] = fSample ;
+	}
+
+	engine->m_bNewAudioData = true;
 
 	return scope.Close( Undefined() );
 } // end AudioEngine::ProcessIfNewData()

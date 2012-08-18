@@ -21,7 +21,11 @@ setTimeout( function() {
 
 	// Declare our processing function
 	function processAudio( numSamples, incomingSamples ) {
-		console.log( incomingSamples );
+		for( var iSample = 0; iSample < numSamples; ++iSample ) {
+			incomingSamples[iSample] = iSample/numSamples;
+		}
+		
+		return incomingSamples;
 	}
 
 	// Start polling the audio engine for data every 2 milliseconds
