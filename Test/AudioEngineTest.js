@@ -28,9 +28,9 @@ setTimeout( function() {
 		return incomingSamples;
 	}
 
-	// Start polling the audio engine for data every 2 milliseconds
+	// Start polling the audio engine for data as fast as we can
 	setInterval( function() {
 		audioEngine.processIfNewData( processAudio );
-	}, 2 );
+	}, 0 );
 
-}, 15000);
+}, 0);
