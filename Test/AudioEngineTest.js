@@ -1,3 +1,6 @@
+// Set this to something like 15000 to give yourself some time to attach to the node.exe process from a debugger
+var TIME_TO_ATTACH_DEBUGGER_MS = 0;
+
 setTimeout( function() {
 
 	var util = require( "util" );
@@ -21,6 +24,8 @@ setTimeout( function() {
 
 	// Declare our processing function
 	function processAudio( numSamples, incomingSamples ) {
+		// Write a saw wave to the buffer
+		// It will have f0 = sampleRate/numSamples
 		for( var iSample = 0; iSample < numSamples; ++iSample ) {
 			incomingSamples[iSample] = iSample/numSamples;
 		}
@@ -33,4 +38,4 @@ setTimeout( function() {
 		audioEngine.processIfNewData( processAudio );
 	}, 0 );
 
-}, 0);
+}, TIME_TO_ATTACH_DEBUGGER );
