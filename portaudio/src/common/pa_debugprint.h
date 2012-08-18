@@ -92,6 +92,8 @@ void PaUtil_DebugPrint( const char *format, ... );
  PA_DEBUG(("errorno: %d", 1001 ));
 */
 
+#define PA_ENABLE_DEBUG_OUTPUT
+#define PA_LOG_API_CALLS
 
 #ifdef PA_ENABLE_DEBUG_OUTPUT
 #define PA_DEBUG(x) PaUtil_DebugPrint x ;
