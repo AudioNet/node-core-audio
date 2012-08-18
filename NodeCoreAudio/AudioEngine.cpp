@@ -32,8 +32,6 @@ namespace {
 /*! Initalize */
 Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 	m_audioCallback(Persistent<Function>::New(audioCallback)),
-	m_uNumInputChannels(2),
-	m_uNumOutputChannels(2),
 	m_bNewAudioData(false),
 	m_uSleepTime(SLEEP_TIME) {
 
@@ -44,52 +42,46 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 
 	PaError openStreamErr;
 
-	PaStreamParameters inputParameters, outputParameters;
-
 	// Setup default input device
-	inputParameters.device = Pa_GetDefaultInputDevice();
-	if (inputParameters.device == paNoDevice) {
+	m_inputParameters.device = Pa_GetDefaultInputDevice();
+	if (m_inputParameters.device == paNoDevice) {
 		ThrowException( Exception::TypeError(String::New("Error: No default input device")) );
 	}
 
 	// Stereo input
-	inputParameters.channelCount = 2;
-	inputParameters.sampleFormat = PA_SAMPLE_TYPE;
-	inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultLowInputLatency;
-	inputParameters.hostApiSpecificStreamInfo = NULL;
+	m_inputParameters.channelCount = 2;
+	m_inputParameters.sampleFormat = PA_SAMPLE_TYPE;
+	m_inputParameters.suggestedLatency = Pa_GetDeviceInfo( m_inputParameters.device )->defaultLowInputLatency;
+	m_inputParameters.hostApiSpecificStreamInfo = NULL;
 
 	// Allocate our input buffers
-	m_fInputProcessSamples.resize( inputParameters.channelCount );
-	m_fInputNonProcessSamples.resize( inputParameters.channelCount );	
-	for( int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel ) {
-		m_fInputProcessSamples[iChannel].resize( FRAMES_PER_BUFFER );
+	m_fInputNonProcessSamples.resize( m_inputParameters.channelCount );	
+	for( unsigned int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel ) {
 		m_fInputNonProcessSamples[iChannel].resize( FRAMES_PER_BUFFER );
 	} // end for each channel
 
 	// Setup default output device
-	outputParameters.device = Pa_GetDefaultOutputDevice();
-	if (outputParameters.device == paNoDevice) {
+	m_outputParameters.device = Pa_GetDefaultOutputDevice();
+	if (m_outputParameters.device == paNoDevice) {
 		ThrowException( Exception::TypeError(String::New("Error: No default output device")) );
 	}
 	
 	// Stereo output
-	outputParameters.channelCount = 2;
-	outputParameters.sampleFormat = PA_SAMPLE_TYPE;
-	outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
-	outputParameters.hostApiSpecificStreamInfo = NULL;
+	m_outputParameters.channelCount = 2;
+	m_outputParameters.sampleFormat = PA_SAMPLE_TYPE;
+	m_outputParameters.suggestedLatency = Pa_GetDeviceInfo( m_outputParameters.device )->defaultLowOutputLatency;
+	m_outputParameters.hostApiSpecificStreamInfo = NULL;
 
 	// Allocate our output buffers
-	m_fOutputProcessSamples.resize( outputParameters.channelCount );
-	m_fOutputNonProcessSamples.resize( outputParameters.channelCount );	
-	for( int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel ) {
-		m_fOutputProcessSamples[iChannel].resize( FRAMES_PER_BUFFER );
+	m_fOutputNonProcessSamples.resize( m_outputParameters.channelCount );	
+	for( unsigned int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel ) {
 		m_fOutputNonProcessSamples[iChannel].resize( FRAMES_PER_BUFFER );
 	} // end for each channel
 
 	// Open an audio I/O stream. 
 	openStreamErr = Pa_OpenStream(  &m_pStream,
-									&inputParameters,
-									&outputParameters,
+									&m_inputParameters,
+									&m_outputParameters,
 									SAMPLE_RATE,
 									FRAMES_PER_BUFFER,
 									paClipOff,				// We won't output out of range samples so don't bother clipping them
@@ -104,10 +96,6 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 
 	if( startStreamErr != paNoError ) 
 		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
-
-	//Pa_Sleep(2*1000);
-
-	//Pa_Terminate();
 } // end AudioEngine::AudioEngine()
 
 
@@ -120,13 +108,13 @@ int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned
 
 	// If the number of samples we get here isn't right, just copy input to output and get out
 	if( uSampleFrames != FRAMES_PER_BUFFER ) {
-		for( int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel )
+		for( unsigned int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel )
 			copyBuffer( uSampleFrames, inputSamples, outputSamples );
 		return 0;
 	}
 	
 	// Copy our incoming samples into our non-process buffers
-	for( int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel )
+	for( unsigned int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel )
 		copyBuffer( uSampleFrames, inputSamples, &m_fInputNonProcessSamples[iChannel][0] );
 
 	// Go to sleep, and hope our non-processing thread delivers data!
@@ -201,6 +189,41 @@ v8::Handle<v8::Value> Audio::AudioEngine::IsActive( const v8::Arguments& args ) 
 
 
 //////////////////////////////////////////////////////////////////////////////
+/*! Returns the sample rate */
+v8::Handle<v8::Value> Audio::AudioEngine::GetSampleRate( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	const PaStreamInfo* streamInfo = Pa_GetStreamInfo(engine->m_pStream);
+
+	return scope.Close( Number::New(streamInfo->sampleRate) );
+} // end AudioEngine::GetSampleRate()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns the number of input channels */
+v8::Handle<v8::Value> Audio::AudioEngine::GetNumInputChannels( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	return scope.Close( Number::New(engine->m_inputParameters.channelCount) );
+} // end AudioEngine::GetNumInputChannels()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns the number of output channels */
+v8::Handle<v8::Value> Audio::AudioEngine::GetNumOutputChannels( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	return scope.Close( Number::New(engine->m_outputParameters.channelCount) );
+} // end AudioEngine::GetNumOutputChannels()
+
+
+//////////////////////////////////////////////////////////////////////////////
 /*! Hands audio to a javascript callback if we have new data */
 v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments& args ) {
 	HandleScope scope;
@@ -214,8 +237,8 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
 	// Just return if we don't have any new audio data
-// 	if( !engine->m_bNewAudioData )
-// 		return scope.Close( Undefined() );
+ 	if( !engine->m_bNewAudioData )
+ 		return scope.Close( Undefined() );
 
 	engine->m_uSampleFrames= Number::New( FRAMES_PER_BUFFER );
 
@@ -232,10 +255,6 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 		float fSample= engine->m_fOutputNonProcessSamples[0][iSample];
 		engine->m_outputBuffer->Set(v8::Number::New(iSample), v8::Number::New(fSample));
 	}
-
-	//engine->wrapObject( v8::Array::New( FRAMES_PER_BUFFER ) );
-
-	vector<float> pfloats;
 
 	const unsigned argc = 2;
 	Local<Value> argv[argc] = { Local<Value>::New(engine->m_uSampleFrames), engine->m_inputBuffer };

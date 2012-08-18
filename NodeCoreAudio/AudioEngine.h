@@ -42,36 +42,34 @@ namespace Audio {
 
 	private:
 		static v8::Persistent<v8::Function> constructor;				
-		static v8::Handle<v8::Value> New( const v8::Arguments& args );		//!< Our V8 new operator
-		static v8::Handle<v8::Value> IsActive( const v8::Arguments& args );	//!< Returns whether the audio stream active
-		static v8::Handle<v8::Value> ProcessIfNewData( const v8::Arguments& args );	//!< Hands audio to a javascript callback if we have new data
+		static v8::Handle<v8::Value> New( const v8::Arguments& args );					//!< Our V8 new operator
+		static v8::Handle<v8::Value> IsActive( const v8::Arguments& args );				//!< Returns whether the audio stream active
+		static v8::Handle<v8::Value> ProcessIfNewData( const v8::Arguments& args );		//!< Hands audio to a javascript callback if we have new data
+		static v8::Handle<v8::Value> GetNumInputChannels( const v8::Arguments& args );	//!< Returns the number of input channels
+		static v8::Handle<v8::Value> GetNumOutputChannels( const v8::Arguments& args );	//!< Returns the number of output channels
+		static v8::Handle<v8::Value> GetSampleRate( const v8::Arguments& args );		//!< Returns the sample rate
 
 		void copyBuffer( int uSampleFrames, float* sourceBuffer, float* destBuffer, bool bZeroSource = false ); //!< Copy one buffer into another
 		void wrapObject( v8::Handle<v8::Object> object ); //!< Wraps a handle into an object
 
 		PaStream* m_pStream;	//!< Our audio stream
 
-		int m_uNumInputChannels,
-			m_uNumOutputChannels;
+		PaStreamParameters m_inputParameters,		//!< Our stream parameters
+						   m_outputParameters;
 		
-		Persistent<Function> m_audioCallback;		//!< We call this with audio data whenever we get it
+		Persistent<Function> m_audioCallback;	//!< We call this with audio data whenever we get it
 
-		Handle<Value> m_uSampleFrames;				//!< Number of sample frames in this buffer (set in audioCallbackSource)
+		Handle<Value> m_uSampleFrames;			//!< Number of sample frames in this buffer (set in audioCallbackSource)
 
-// 		v8::Value m_tempSampleIndex,			//!< Temp preallocated sample index variable
-// 				  m_tempSample;					//!< A temporary preallocated sample we use to copy data inside audioCallback()
-
-		bool m_bNewAudioData;		//!< Our new audio data flag
-
-		v8::Local<v8::Array> m_inputBuffer,
+		v8::Local<v8::Array> m_inputBuffer,		//!< Our v8 input and output buffers
 							 m_outputBuffer;
+
+		bool m_bNewAudioData;	//!< Our new audio data flag
 
 		int m_uSleepTime;		//!< The number of milliseconds we put the audio thread to 
 								//!< sleep when we're waiting for new data from the non-process thread
 
-		vector<vector<float> > m_fInputProcessSamples,		//!< Samples coming from the sound card
-							   m_fInputNonProcessSamples,	//!< Samples we can change from the main thread
-							   m_fOutputProcessSamples,		//!< Samples going to the sound card
+		vector<vector<float> > m_fInputNonProcessSamples,	//!< Samples we can change from the main thread
 							   m_fOutputNonProcessSamples;	//!< Samples we can change from the main thread
 
 	}; // end class AudioEngine
