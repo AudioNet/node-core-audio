@@ -14,7 +14,7 @@ using namespace v8; using namespace std;
 
 #define SAMPLE_RATE			(44100)
 #define PA_SAMPLE_TYPE      paFloat32
-#define FRAMES_PER_BUFFER   (64)
+#define FRAMES_PER_BUFFER   (256)
 
 namespace Audio {
 
