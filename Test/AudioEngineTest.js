@@ -1,31 +1,32 @@
-var util = require( "util" );
+setTimeout( function() {
 
-process.on('uncaughtException', function (err) {
-  console.error(err);
-  console.log("Node NOT Exiting...");
-});
+	var util = require( "util" );
 
-var audioEngineImpl = require( "../Debug/NodeCoreAudio" );
+	process.on('uncaughtException', function (err) {
+	  console.error(err);
+	  console.log("Node NOT Exiting...");
+	});
 
-console.log( audioEngineImpl );
+	var audioEngineImpl = require( "../Debug/NodeCoreAudio" );
 
-var audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
-	console.log( "aw shit, we got some samples" );
-});
+	console.log( audioEngineImpl );
 
-console.log( util.inspect( audioEngineImpl.createAudioEngine ) );
-console.log( util.inspect( audioEngine ) );
+	var audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
+		console.log( "aw shit, we got some samples" );
+	});
 
-//console.log( audioEngine.plusOne( function(data){console.log(data);}) );
+	// Make sure the audio engine is still active
+	if( audioEngine.isActive() ) console.log( "active" );
+	else console.log( "not active" );
 
-console.log( "alive");
+	// Declare our processing function
+	function processAudio( numSamples, incomingSamples ) {
+		console.log( incomingSamples );
+	}
 
-if( audioEngine.isActive() ) console.log( "active" );
-else console.log( "not active" );
+	// Start polling the audio engine for data every 2 milliseconds
+	setInterval( function() {
+		audioEngine.processIfNewData( processAudio );
+	}, 2 );
 
-var http = require('http');
-http.createServer(function (req, res) {
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('Hello World\n');
-}).listen(1337, '127.0.0.1');
-console.log('Server running at http://127.0.0.1:1337/');
+}, 15000);
