@@ -41,6 +41,7 @@ namespace Audio {
 	private:
 		static v8::Persistent<v8::Function> constructor;				
 		static v8::Handle<v8::Value> New(const v8::Arguments& args);	//!< Our V8 new operator
+		static v8::Handle<v8::Value> PlusOne(const v8::Arguments& args);//!< Test
 
 		int m_uNumInputChannels,
 			m_uNumOutputChannels;

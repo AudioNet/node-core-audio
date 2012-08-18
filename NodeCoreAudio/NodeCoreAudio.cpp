@@ -94,8 +94,7 @@ Handle<Value> CreateEngine(const Arguments& args) {
 void InitAll(Handle<Object> target) {
 	Audio::AudioEngine::Init( target );
 
-	target->Set(String::NewSymbol("createAudioEngine"),
-		FunctionTemplate::New(CreateEngine)->GetFunction());
+	target->Set( String::NewSymbol("createAudioEngine"), FunctionTemplate::New(CreateEngine)->GetFunction() );
 }
 
 NODE_MODULE( NodeCoreAudio, InitAll )

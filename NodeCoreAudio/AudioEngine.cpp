@@ -76,14 +76,14 @@ int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned
 /*! Our node.js instantiation function */
 void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	// Prepare constructor template
-	Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-	tpl->SetClassName(String::NewSymbol("AudioEngine"));
-	tpl->InstanceTemplate()->SetInternalFieldCount(1);
-	// Prototype
-// 	tpl->PrototypeTemplate()->Set(String::NewSymbol("plusOne"),
-// 		FunctionTemplate::New(PlusOne)->GetFunction());
+	Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(New);
+	functionTemplate->SetClassName(String::NewSymbol("AudioEngine"));
+	functionTemplate->InstanceTemplate()->SetInternalFieldCount(1);
 
-	constructor = Persistent<Function>::New(tpl->GetFunction());
+	// Prototype
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("plusOne"), FunctionTemplate::New(PlusOne)->GetFunction() );
+
+	constructor = Persistent<Function>::New(functionTemplate->GetFunction());
 } // end AudioEngine::Init()
 
 
@@ -109,12 +109,20 @@ v8::Handle<v8::Value> Audio::AudioEngine::New(const v8::Arguments& args) {
 		return ThrowException( Exception::TypeError(String::New("Callback function required")) );
 	}
 	
-	Local<Function> callback = Local<Function>::Cast(args[0]);
+	Local<Function> callback = Local<Function>::Cast( args[0] );
 	
 	AudioEngine* engine = new AudioEngine( callback );
 
 	return args.This();
 } // end AudioEngine::New()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Test */
+v8::Handle<v8::Value> Audio::AudioEngine::PlusOne(const v8::Arguments& args) {
+	HandleScope scope;
+	return scope.Close(Undefined());
+} // end AudioEngine::PlusOne()
 
 
 //////////////////////////////////////////////////////////////////////////////
