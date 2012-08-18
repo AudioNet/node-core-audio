@@ -21,32 +21,69 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 	m_uNumOutputChannels(2) {
 
 	// Initialize our audio core
-	Pa_Initialize();
+	PaError initErr = Pa_Initialize();
+	if( initErr != paNoError ) 
+		ThrowException( Exception::TypeError(String::New("Failed to initialize audio engine")) );
 
-	PaStream *stream;
-	PaError err;
+	PaError openStreamErr;
 
-	/* Open an audio I/O stream. */
-	err = Pa_OpenDefaultStream( &stream,
-								0,          /* no input channels */
-								2,          /* stereo output */
-								paFloat32,  /* 32 bit floating point output */
-								SAMPLE_RATE,
-								256,        /* frames per buffer */
-								audioCallbackSource, /* this is your callback function */
-								this ); /*This is a pointer that will be passed to your callback*/
+	PaStreamParameters inputParameters, outputParameters;
 
+	// Setup default input device
+	inputParameters.device = Pa_GetDefaultInputDevice();
+	if (inputParameters.device == paNoDevice) {
+		ThrowException( Exception::TypeError(String::New("Error: No default input device")) );
+	}
+
+	// Stereo input
+	inputParameters.channelCount = 2;
+	inputParameters.sampleFormat = PA_SAMPLE_TYPE;
+	inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultLowInputLatency;
+	inputParameters.hostApiSpecificStreamInfo = NULL;
+
+	// Setup default output device
+	outputParameters.device = Pa_GetDefaultOutputDevice();
+	if (outputParameters.device == paNoDevice) {
+		ThrowException( Exception::TypeError(String::New("Error: No default output device")) );
+	}
+	
+	// Stereo output
+	outputParameters.channelCount = 2;
+	outputParameters.sampleFormat = PA_SAMPLE_TYPE;
+	outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+	outputParameters.hostApiSpecificStreamInfo = NULL;
+
+	// Open an audio I/O stream. 
+	openStreamErr = Pa_OpenStream(  &m_pStream,
+									&inputParameters,
+									&outputParameters,
+									SAMPLE_RATE,
+									FRAMES_PER_BUFFER,
+									paClipOff,				// We won't output out of range samples so don't bother clipping them
+									audioCallbackSource,	// this is your callback function
+									this );					// This is a pointer that will be passed to your callback*/
+
+	if( openStreamErr != paNoError ) 
+		ThrowException( Exception::TypeError(String::New("Failed to open audio stream")) );
+
+	// Start the audio stream
+	PaError startStreamErr = Pa_StartStream( m_pStream );
+
+	if( startStreamErr != paNoError ) 
+		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
+
+	//Pa_Sleep(2*1000);
+
+	//Pa_Terminate();
 } // end AudioEngine::AudioEngine()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Our main audio callback */
 int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned long uSampleFrames, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags ) {
-	std::vector<float> teste;
-
+	Isolate::Enter();
+	
 	m_uSampleFrames= Number::New( uSampleFrames );
-	//m_inputBuffer= Number::New( teste );
-	//m_outputBuffer= Array::New( outputBuffer );
 	float* outputSamples= reinterpret_cast<float *>( output );
 
 	// Copy output 
@@ -56,17 +93,16 @@ int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned
 		m_outputBuffer->Set(v8::Number::New(iSample), v8::Number::New(fSample));
 	}
 
-	//context->Global()->Set(v8::String::New("arguments"), outputBuffer);
-
 	vector<float> pfloats;
 
 	ObjectWrap::Wrap( m_outputBuffer );
 
 	const unsigned argc = 3;
 	Local<Value> argv[argc] = { Local<Value>::New(m_uSampleFrames), m_inputBuffer, m_outputBuffer };
-	//cb->Call(Context::GetCurrent()->Global(), argc, argv);
 
 	m_audioCallback->Call( Context::GetCurrent()->Global(), argc, argv );
+
+	Isolate::Exit;
 
 	return 0;
 } // end AudioEngine::audioCallback()
@@ -76,14 +112,15 @@ int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned
 /*! Our node.js instantiation function */
 void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	// Prepare constructor template
-	Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(New);
+	Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(Audio::AudioEngine::New);
 	functionTemplate->SetClassName(String::NewSymbol("AudioEngine"));
 	functionTemplate->InstanceTemplate()->SetInternalFieldCount(1);
 
 	// Prototype
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("plusOne"), FunctionTemplate::New(PlusOne)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("plusOne"), FunctionTemplate::New(Audio::AudioEngine::PlusOne)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("isActive"), FunctionTemplate::New(Audio::AudioEngine::IsActive)->GetFunction() );
 
-	constructor = Persistent<Function>::New(functionTemplate->GetFunction());
+	constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
 } // end AudioEngine::Init()
 
 
@@ -112,8 +149,9 @@ v8::Handle<v8::Value> Audio::AudioEngine::New(const v8::Arguments& args) {
 	Local<Function> callback = Local<Function>::Cast( args[0] );
 	
 	AudioEngine* engine = new AudioEngine( callback );
+	engine->Wrap( args.This() );
 
-	return args.This();
+	return scope.Close( args.This() );
 } // end AudioEngine::New()
 
 
@@ -121,12 +159,35 @@ v8::Handle<v8::Value> Audio::AudioEngine::New(const v8::Arguments& args) {
 /*! Test */
 v8::Handle<v8::Value> Audio::AudioEngine::PlusOne(const v8::Arguments& args) {
 	HandleScope scope;
-	return scope.Close(Undefined());
+
+	if (!args[0]->IsFunction()) {
+		return ThrowException( Exception::TypeError(String::New("Callback function required")) );
+	}
+
+	return scope.Close( Number::New(2) );
 } // end AudioEngine::PlusOne()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns whether the audio stream active */
+v8::Handle<v8::Value> Audio::AudioEngine::IsActive(const v8::Arguments& args) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>(args.This());
+	
+	if( Pa_IsStreamActive(engine->m_pStream) )	
+		return scope.Close( Boolean::New(true) );
+	else
+		return scope.Close( Boolean::New(false) );
+} // end AudioEngine::IsActive()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Destructor */
 Audio::AudioEngine::~AudioEngine() {
-	
+	PaError err = Pa_Terminate();
+	if( err != paNoError )
+		printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
+
+	ThrowException( Exception::TypeError(String::New("Being destructed")) );
 } // end AudioEngine::~AudioEngine()

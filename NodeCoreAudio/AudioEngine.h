@@ -12,7 +12,9 @@
 #include <node_object_wrap.h>
 using namespace v8; using namespace std;
 
-#define SAMPLE_RATE (44100)
+#define SAMPLE_RATE			(44100)
+#define PA_SAMPLE_TYPE      paFloat32
+#define FRAMES_PER_BUFFER   (64)
 
 namespace Audio {
 
@@ -40,14 +42,22 @@ namespace Audio {
 
 	private:
 		static v8::Persistent<v8::Function> constructor;				
-		static v8::Handle<v8::Value> New(const v8::Arguments& args);	//!< Our V8 new operator
-		static v8::Handle<v8::Value> PlusOne(const v8::Arguments& args);//!< Test
+		static v8::Handle<v8::Value> New(const v8::Arguments& args);		//!< Our V8 new operator
+		static v8::Handle<v8::Value> PlusOne(const v8::Arguments& args);	//!< Test
+		static v8::Handle<v8::Value> IsActive(const v8::Arguments& args);	//!< Returns whether the audio stream active
+
+		PaStream* m_pStream;	//!< Our audio stream
 
 		int m_uNumInputChannels,
 			m_uNumOutputChannels;
 		
 		Persistent<Function> m_audioCallback;		//!< We call this with audio data whenever we get it
+
 		Handle<Value> m_uSampleFrames;				//!< Number of sample frames in this buffer (set in audioCallbackSource)
+
+		v8::Value m_tempSampleIndex,			//!< Temp preallocated sample index variable
+				  m_tempSample;					//!< A temporary preallocated sample we use to copy data inside audioCallback()
+
 		v8::Local<v8::Array> m_inputBuffer,
 							 m_outputBuffer;
 
