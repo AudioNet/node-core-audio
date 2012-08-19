@@ -1,17 +1,20 @@
-var IS_CLIENT = true;
+var IS_CLIENT = false;
 
 function runAudioStuff( isClient ) {
 	var io;
 	var socket;
 	var hasNewData = false;
 	var gotNewData = false;
+	var sampleFrames;
 	var tempBuffer = [];
 	var incomingBuffer = [];
 	var currentUser;
+	var loudnessMeter;
 	
 	if( isClient ) {
 		var io = require( 'socket.io-client' );
 		socket = io.connect('http://localhost:9999');
+		loudnessMeter = require("./LoudnessMeterDSP").createNewLoudnessMeter( socket );
 		
 		socket.on( "connect", function() {
 			start = new Date().getTime();
@@ -33,6 +36,8 @@ function runAudioStuff( isClient ) {
 		
 		io.sockets.on( 'connection', function( newSocket ) {
 			socket = newSocket;
+		
+			loudnessMeter = require("./LoudnessMeterDSP").createNewLoudnessMeter( socket );
 			console.log( "Socket connection" );
 			currentUser = socket.id;
 			
@@ -45,11 +50,13 @@ function runAudioStuff( isClient ) {
 	
 	var util = require( "util" );
 
+	/*
 	process.on('uncaughtException', function (err) {
 	  console.error(err);
 	  console.log("Node NOT Exiting...");
 	});
-
+	*/
+	
 	var audioEngineImpl = require( "../../../../Debug/NodeCoreAudio" );
 
 	console.log( audioEngineImpl );
@@ -58,19 +65,18 @@ function runAudioStuff( isClient ) {
 		console.log( "some function" );
 	});
 
-	// Make sure the audio engine is still active
-	if( audioEngine.isActive() ) console.log( "active" );
-	else console.log( "not active" );
-
 	// Our processing function
 	function processAudio( numSamples, incomingSamples ) {	
+		sampleFrames = numSamples;
 		
 		if( gotNewData ) {
 			gotNewData = false;
 			for( var iSample = 0; iSample < numSamples; ++iSample ) {
 				tempBuffer[iSample] = ( incomingSamples[iSample] + incomingBuffer[iSample] ) / 2;
 			}
-		} // end if we got new data
+		} else {
+			tempBuffer = incomingSamples;
+		}
 		
 		hasNewData = true;
 		
@@ -83,10 +89,16 @@ function runAudioStuff( isClient ) {
 		
 		if( hasNewData ) {
 			hasNewData = false;			
+			
+			if( typeof(loudnessMeter) != "undefined" )
+				loudnessMeter.processLoudness( sampleFrames, tempBuffer );
+			
+			/*
 			if( isClient )
 				socket.emit( "audioData", { buffer: tempBuffer } );
 			else
 				io.sockets.socket(currentUser).emit( "audioData", { buffer: tempBuffer } );
+			*/
 		}
 	}, 0 );
 }
@@ -100,7 +112,7 @@ var app = module.exports = require('appjs');
 var path = require('path');
 
 // serves files to browser requests to "http://appjs/*"
-app.serveFilesFrom(path.resolve(__dirname, 'content'));
+app.serveFilesFrom(__dirname + '/assets');
 
 var window = app.createWindow('http://appjs/', {
   width           : 640,
@@ -108,7 +120,7 @@ var window = app.createWindow('http://appjs/', {
   left            : -1,    // optional, -1 centers
   top             : -1,    // optional, -1 centers
   autoResize      : false, // resizes in response to html content
-  resizable       : true, // controls whether window is resizable by user
+  resizable       : false, // controls whether window is resizable by user
   showChrome      : true,  // show border and title bar
   opacity         : 1,     // opacity from 0 to 1 (Linux)
   alpha           : true,  // alpha composited background (Windows & Mac)
@@ -128,8 +140,18 @@ window.on('ready', function(){
   this.console.log('process', process);
   this.frame.center();
   this.frame.show();
+  
+  $ = window.$
+
   console.log("Window Ready");
   runAudioStuff( IS_CLIENT );
+  
+	// Connect to the server
+	io = require( "socket.io-client" );
+	var socket = io.connect('http://localhost:9999');
+	
+	// Create our meters
+	var loudnessMeter = require("./assets/js/CLoudnessMeter").createNewLoudnessMeter( socket );
 });
 
 window.on('close', function(){
