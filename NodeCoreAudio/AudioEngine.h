@@ -34,7 +34,6 @@ namespace Audio {
 			return ((AudioEngine*)userData)->audioCallback(inputBuffer, outputBuffer, framesPerBuffer, timeInfo, statusFlags);
 		} // end audioCallbackSource()
 
-
 		//!< Our main audio callback
 		int audioCallback( const void *input, void *output, unsigned long uSampleFrames, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags );
 

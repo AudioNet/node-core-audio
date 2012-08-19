@@ -103,8 +103,8 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 /*! Our main audio callback */
 int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned long uSampleFrames, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags ) {
 
-	float* outputSamples= reinterpret_cast<float *>( output ),
-		 * inputSamples= reinterpret_cast<float *>( output );
+	float* outputSamples = reinterpret_cast<float *>( output ),
+		 * inputSamples = reinterpret_cast<float *>( output );
 
 	// If the number of samples we get here isn't right, just copy input to output and get out
 	if( uSampleFrames != FRAMES_PER_BUFFER ) {
