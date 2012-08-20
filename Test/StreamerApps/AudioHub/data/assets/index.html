@@ -6,25 +6,12 @@
 	<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
 	<link href="css/google-prettify.css" rel="stylesheet">
 	<link href="css/style.css" rel="stylesheet">
-</head>
-<body>
-	<!-- HTML5 canvas -->
-	<div id="container" width="120" height="420">
-		<canvas id="canvas" width="120" height="420">
-			<p>Unfortunately, your browser is currently unsupported by our web 
-			application.  We are sorry for the inconvenience. Please use one of the 
-			supported browsers listed below, or draw the image you want using an 
-			offline tool.</p>
-			<p>Supported browsers: <a href="http://www.opera.com">Opera</a>, <a 
-			  href="http://www.mozilla.com">Firefox</a>, <a 
-			  href="http://www.apple.com/safari">Safari</a>, and <a 
-			  href="http://www.konqueror.org">Konqueror</a>.</p>
-		</canvas>
-	</div>
 	
 	<!-- Third party scripts -->
 	<script src="/socket.io/socket.io.js"></script>	
 	<script src="js/jquery.js"></script>
+	<script src="js/jquery-ui.js"></script>
+	<script src="js/jquery.combobox.js"></script>
 	<script src="js/bootstrap.js"></script>
 	<script src="js/google-prettify.js"></script>
 	
@@ -32,5 +19,40 @@
 	<script src="js/CDrawContext.js"></script>
 	<script src="js/CLoudnessMeter.js"></script>
 	<script src="js/CAudioHub.js"></script>
+</head>
+<body>
+	<table border="3" width = 100%>
+	<tr>
+	<td>
+		<div class="ui-widget">
+		<label>Select Input Device</label>
+		<select id="combobox" onchange="onInputDeviceChange();">
+			<option value="">Select one...</option>
+			<option value="combobox">default</option>
+		</select>
+	</div>
+	</td>
+	<td>
+		<!-- HTML5 canvas -->
+		<div id="container" width="120" height="420">
+			<canvas id="canvas" width="120" height="420">
+				<p>Unfortunately, your browser is currently unsupported by our web 
+				application.  We are sorry for the inconvenience. Please use one of the 
+				supported browsers listed below, or draw the image you want using an 
+				offline tool.</p>
+				<p>Supported browsers: <a href="http://www.opera.com">Opera</a>, <a 
+				  href="http://www.mozilla.com">Firefox</a>, <a 
+				  href="http://www.apple.com/safari">Safari</a>, and <a 
+				  href="http://www.konqueror.org">Konqueror</a>.</p>
+			</canvas>
+		</div>
+	</td>
+	</tr>
+	</table> 
+	
+	<div class="demo">
+
+</div><!-- End demo -->
+	
 </body>
 </html>

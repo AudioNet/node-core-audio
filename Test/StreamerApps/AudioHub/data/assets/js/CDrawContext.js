@@ -2,15 +2,15 @@
 // Node.js Exports
 var globalNamespace = {};
 (function (exports) {
-	exports.createNewDrawContext = function( elementName ) {
-		newDrawContext= new DrawContext( elementName );
+	exports.createNewDrawContext = function( $, elementName ) {
+		newDrawContext= new DrawContext( $, elementName );
 		return newDrawContext;
 	};
 }(typeof exports === 'object' && exports || globalNamespace));
 
 //////////////////////////////////////////////////////////////////////////
 // Constructor
-function DrawContext( elementName ) {
+function DrawContext( $, elementName ) {
 	this.elementName = "canvas";
 	this.canvas;
 	this.context;

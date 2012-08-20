@@ -12,8 +12,8 @@
 // Node.js Exports
 var globalNamespace = {};
 (function (exports) {
-	exports.createNewLoudnessMeter = function( socket ) {
-		newLoudnessMeter = new LoudnessMeter( socket );
+	exports.createNewLoudnessMeter = function( $, socket ) {
+		newLoudnessMeter = new LoudnessMeter( $, socket );
 		return newLoudnessMeter;
 	};
 }(typeof exports === 'object' && exports || globalNamespace));
@@ -21,7 +21,8 @@ var globalNamespace = {};
 
 //////////////////////////////////////////////////////////////////////////
 // Constructor
-function LoudnessMeter( socket ) {
+function LoudnessMeter( $, socket ) {
+
 	var _this = this;
 	
 	this.socket = socket;
@@ -30,9 +31,9 @@ function LoudnessMeter( socket ) {
 	var context = this.drawContext;
 
 	if( typeof(exports) == "object" ) { 
-		context = require("./CDrawContext").createNewDrawContext();
+		context = require("./CDrawContext").createNewDrawContext( $ );
 	} else {
-		context = new DrawContext();
+		context = new DrawContext( $ );
 	}
 	
 

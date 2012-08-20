@@ -1,5 +1,7 @@
 var IS_CLIENT = false;
 
+var audioEngine;
+
 function runAudioStuff( isClient ) {
 	var io;
 	var socket;
@@ -61,7 +63,7 @@ function runAudioStuff( isClient ) {
 
 	console.log( audioEngineImpl );
 
-	var audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
+	audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
 		console.log( "some function" );
 	});
 
@@ -111,49 +113,68 @@ function runAudioStuff( isClient ) {
 var app = module.exports = require('appjs');
 var path = require('path');
 
-// serves files to browser requests to "http://appjs/*"
 app.serveFilesFrom(__dirname + '/assets');
 
-var window = app.createWindow('http://appjs/', {
+var window = app.createWindow({
   width           : 640,
   height          : 460,
-  left            : -1,    // optional, -1 centers
-  top             : -1,    // optional, -1 centers
-  autoResize      : false, // resizes in response to html content
-  resizable       : false, // controls whether window is resizable by user
-  showChrome      : true,  // show border and title bar
-  opacity         : 1,     // opacity from 0 to 1 (Linux)
-  alpha           : true,  // alpha composited background (Windows & Mac)
-  fullscreen      : false, // covers whole screen and has no border
-  disableSecurity : true   // allow cross origin requests
+  resizable: false,
+  disableSecurity: true,
+  icons: __dirname + '/assets/icons'
 });
 
 
 window.on('create', function(){
-  console.log("Window Created");
+	window.frame.show();
+	window.frame.center();
 });
 
 window.on('ready', function(){
-  this.require = require;
-  this.process = process;
-  this.module = module;
-  this.console.log('process', process);
-  this.frame.center();
-  this.frame.show();
+	this.require = require;
+	this.process = process;
+	this.module = module;
+	this.console.log('process', process);
+	this.frame.center();
+	this.frame.show();
   
-  $ = window.$
-
-  console.log("Window Ready");
-  runAudioStuff( IS_CLIENT );
+	var $ = window.$;
+	
+	var $inputDevices = $('#combobox');
+	var inputDeviceCombo = $('#combobox').combobox();
+	$inputDevices.combobox.onChange = function() {
+		console.log( "woot" );
+	}; 
+	
+	console.log("Window Ready");
+	runAudioStuff( IS_CLIENT );
+	
+	var deviceNames = getDeviceNames();
+	for( iDevice = 0; iDevice < deviceNames.length; ++iDevice ) {
+		$inputDevices.append("<option value=" + deviceNames[iDevice] + ">" + deviceNames[iDevice] + "</option>");
+	}
   
 	// Connect to the server
 	io = require( "socket.io-client" );
 	var socket = io.connect('http://localhost:9999');
 	
 	// Create our meters
-	var loudnessMeter = require("./assets/js/CLoudnessMeter").createNewLoudnessMeter( socket );
+	var loudnessMeter = require("./assets/js/CLoudnessMeter").createNewLoudnessMeter( $, socket );
 });
 
 window.on('close', function(){
-  console.log("Window Closed");
+	console.log("Window Closed");
 });
+
+function getDeviceNames() {
+	var deviceNames = [];
+
+	for( var iDevice = 0; iDevice < audioEngine.getNumDevices(); ++iDevice ) {
+		deviceNames.push( audioEngine.getDeviceName( iDevice ) );
+	}
+	
+	return deviceNames;
+} // end getDeviceNames()
+
+function onInputDeviceChange() {
+	console.log( "hello" );
+}
