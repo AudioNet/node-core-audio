@@ -42,11 +42,17 @@ namespace Audio {
 	private:
 		static v8::Persistent<v8::Function> constructor;				
 		static v8::Handle<v8::Value> New( const v8::Arguments& args );					//!< Our V8 new operator
-		static v8::Handle<v8::Value> IsActive( const v8::Arguments& args );				//!< Returns whether the audio stream active
+
 		static v8::Handle<v8::Value> ProcessIfNewData( const v8::Arguments& args );		//!< Hands audio to a javascript callback if we have new data
+		
+		static v8::Handle<v8::Value> IsActive( const v8::Arguments& args );				//!< Returns whether the audio stream active
 		static v8::Handle<v8::Value> GetNumInputChannels( const v8::Arguments& args );	//!< Returns the number of input channels
 		static v8::Handle<v8::Value> GetNumOutputChannels( const v8::Arguments& args );	//!< Returns the number of output channels
 		static v8::Handle<v8::Value> GetSampleRate( const v8::Arguments& args );		//!< Returns the sample rate
+		static v8::Handle<v8::Value> GetInputDeviceIndex( const v8::Arguments& args );	//!< Returns the index of the input device
+		static v8::Handle<v8::Value> GetOutputDeviceIndex( const v8::Arguments& args );	//!< Returns the index of the output device
+		static v8::Handle<v8::Value> GetDeviceName( const v8::Arguments& args );		//!< Returns the name of the device corresponding to a given ID number
+		static v8::Handle<v8::Value> GetNumDevices( const v8::Arguments& args );		//!< Returns the number of devices we have available
 
 		void copyBuffer( int uSampleFrames, float* sourceBuffer, float* destBuffer, bool bZeroSource = false ); //!< Copy one buffer into another
 		void wrapObject( v8::Handle<v8::Object> object ); //!< Wraps a handle into an object

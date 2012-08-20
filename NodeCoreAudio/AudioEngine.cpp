@@ -138,6 +138,11 @@ void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	// Prototype
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("isActive"), FunctionTemplate::New(Audio::AudioEngine::IsActive)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("processIfNewData"), FunctionTemplate::New(Audio::AudioEngine::ProcessIfNewData)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getSampleRate"), FunctionTemplate::New(Audio::AudioEngine::GetSampleRate)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getInputDeviceIndex"), FunctionTemplate::New(Audio::AudioEngine::GetInputDeviceIndex)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getOutputDeviceIndex"), FunctionTemplate::New(Audio::AudioEngine::GetOutputDeviceIndex)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getDeviceName"), FunctionTemplate::New(Audio::AudioEngine::GetDeviceName)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumDevices"), FunctionTemplate::New(Audio::AudioEngine::GetNumDevices)->GetFunction() );
 
 	constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
 } // end AudioEngine::Init()
@@ -213,6 +218,47 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetNumInputChannels( const v8::Argumen
 
 
 //////////////////////////////////////////////////////////////////////////////
+/*! Returns the index of the input device */
+v8::Handle<v8::Value> Audio::AudioEngine::GetInputDeviceIndex( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	return scope.Close( Number::New(engine->m_inputParameters.device) );
+} // end AudioEngine::GetInputDeviceIndex()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns the index of the output device */
+v8::Handle<v8::Value> Audio::AudioEngine::GetOutputDeviceIndex( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	return scope.Close( Number::New(engine->m_outputParameters.device) );
+} // end AudioEngine::GetOutputDeviceIndex()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns the name of the device corresponding to a given ID number */
+v8::Handle<v8::Value> Audio::AudioEngine::GetDeviceName( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	if( !args[0]->IsNumber() ) {
+		return ThrowException( Exception::TypeError(String::New("getDeviceName() requires a device index")) );
+	}
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
+
+	const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
+
+	return scope.Close( String::New(deviceInfo->name) );
+} // end AudioEngine::GetDeviceName()
+
+
+//////////////////////////////////////////////////////////////////////////////
 /*! Returns the number of output channels */
 v8::Handle<v8::Value> Audio::AudioEngine::GetNumOutputChannels( const v8::Arguments& args ) {
 	HandleScope scope;
@@ -221,6 +267,19 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetNumOutputChannels( const v8::Argume
 
 	return scope.Close( Number::New(engine->m_outputParameters.channelCount) );
 } // end AudioEngine::GetNumOutputChannels()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Returns the number of devices we have available */
+v8::Handle<v8::Value> Audio::AudioEngine::GetNumDevices( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	int deviceCount = Pa_GetDeviceCount();
+
+	return scope.Close( Number::New(deviceCount) );
+} // end AudioEngine::GetNumDevices()
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -272,7 +331,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 	for (int iSample = 0; iSample < length; iSample++) {
 		v8::Local<v8::Value> element = result->Get(iSample);
 
-		float fSample= element->NumberValue();
+		float fSample= (float)element->NumberValue();
 		engine->m_fOutputNonProcessSamples[0][iSample] = fSample ;
 	}
 
