@@ -2,6 +2,27 @@ var IS_CLIENT = false;
 
 var audioEngine;
 
+function generateSine( numSamples, buffer, frequency, sampleRate, previousPhase ) {
+	var period = 1 / frequency;
+	
+	var bufferLengthMs = numSamples / sampleRate,	// Length of our buffer in time
+		phaseDelta = numSamples / period,			// Change in phase while generating for this buffer
+		samplePhaseDelta = phaseDelta / numSamples;	// Change in phase between samples
+		
+	for( var iSample = 0; iSample < numSamples; ++iSample ) {
+		buffer[iSample] = Math.sin( previousPhase + iSample * samplePhaseDelta );
+	}
+	
+	var newPhase = previousPhase + phaseDelta;
+	
+	// Subtract 2pi until we get inside ( 0 > phase > 2pi )
+	while( newPhase > Math.PI * 2 ) {
+		newPhase -= Math.PI * 2;
+	}
+	
+	return newPhase;
+}
+
 function runAudioStuff( isClient ) {
 	var io;
 	var socket;
@@ -52,23 +73,32 @@ function runAudioStuff( isClient ) {
 	
 	var util = require( "util" );
 
-	/*
+	
 	process.on('uncaughtException', function (err) {
 	  console.error(err);
 	  console.log("Node NOT Exiting...");
 	});
-	*/
 	
-	var audioEngineImpl = require( "../../../../Debug/NodeCoreAudio" );
+	
+	var audioEngineImpl = require( "D:/Projects/node-core-audio/Test/StreamerApps/AudioHub/data/node_modules/node-core-audio/NodeCoreAudio" );
 
 	console.log( audioEngineImpl );
 
 	audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
 		console.log( "some function" );
 	});
+	
+	var sinePhase = 0;
+	var sampleRate = audioEngine.getSampleRate();
 
 	// Our processing function
 	function processAudio( numSamples, incomingSamples ) {	
+		var sum = 0;
+		for( var iSample = 0; iSample < numSamples; ++iSample ) {
+			sum += incomingSamples[iSample];
+		}
+		console.log( sum );
+	
 		sampleFrames = numSamples;
 		
 		if( gotNewData ) {
@@ -82,11 +112,13 @@ function runAudioStuff( isClient ) {
 		
 		hasNewData = true;
 		
+		//sinePhase = generateSine( numSamples, tempBuffer, 440, sampleRate, sinePhase );
+		
 		return tempBuffer;
 	}
 
 	// Start polling the audio engine for data as fast as we can
-	setInterval( function() {
+	setInterval( function() {	
 		audioEngine.processIfNewData( processAudio );
 		
 		if( hasNewData ) {
@@ -104,10 +136,6 @@ function runAudioStuff( isClient ) {
 		}
 	}, 0 );
 }
-
-
-
-
 
 
 var app = module.exports = require('appjs');
@@ -138,32 +166,43 @@ window.on('ready', function(){
 	this.frame.show();
   
 	var $ = window.$;
+	window.onInputDeviceChange = function( inputDeviceComo ) { onInputDeviceChange( inputDeviceComo.selectedIndex ); };
 	
-	var $inputDevices = $('#combobox');
-	var inputDeviceCombo = $('#combobox').combobox();
-	$inputDevices.combobox.onChange = function() {
-		console.log( "woot" );
-	}; 
-	
-	console.log("Window Ready");
 	runAudioStuff( IS_CLIENT );
 	
-	var deviceNames = getDeviceNames();
-	for( iDevice = 0; iDevice < deviceNames.length; ++iDevice ) {
-		$inputDevices.append("<option value=" + deviceNames[iDevice] + ">" + deviceNames[iDevice] + "</option>");
-	}
-  
-	// Connect to the server
-	io = require( "socket.io-client" );
-	var socket = io.connect('http://localhost:9999');
-	
-	// Create our meters
-	var loudnessMeter = require("./assets/js/CLoudnessMeter").createNewLoudnessMeter( $, socket );
+	init( $ );
 });
+
 
 window.on('close', function(){
 	console.log("Window Closed");
 });
+
+
+function init( $ ) {	
+	// Connect to the server
+	io = require( "socket.io-client" );
+	var socket = io.connect('http://localhost:9999');
+	
+	$( "#slider" ).slider();
+
+	var $inputDevices = $('#combobox');
+	//var inputDeviceCombo = $('#combobox').combobox();
+	$inputDevices.combobox.onChange = function() {
+		console.log( "woot" );
+	}; 
+	
+	var deviceNames = getDeviceNames();
+	for( iDevice = 0; iDevice < deviceNames.length; ++iDevice ) {
+		$inputDevices.append("<option value=" + iDevice + ">" + deviceNames[iDevice] + "</option>");
+	}
+	
+	// Create our meters
+	var loudnessMeter = require("./assets/js/CLoudnessMeter").createNewLoudnessMeter( $, socket );
+	
+	console.log("Window Ready");
+} // end initUI()
+
 
 function getDeviceNames() {
 	var deviceNames = [];
@@ -175,6 +214,13 @@ function getDeviceNames() {
 	return deviceNames;
 } // end getDeviceNames()
 
-function onInputDeviceChange() {
-	console.log( "hello" );
-}
+
+function onInputDeviceChange( inputDevice ) {
+	console.log( "Combo box changed to input " + audioEngine.getDeviceName(inputDevice) );
+	
+	try {
+		audioEngine.setInputDevice( inputDevice );
+	} catch ( error ) {
+		console.log( error );
+	}
+} // end onInputDeviceChange()
