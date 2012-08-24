@@ -10,7 +10,7 @@ setTimeout( function() {
 	  console.log("Node NOT Exiting...");
 	});
 
-	var audioEngineImpl = require( "../Debug/NodeCoreAudio" );
+	var audioEngineImpl = require( "NodeCoreAudio" );
 
 	console.log( audioEngineImpl );
 
