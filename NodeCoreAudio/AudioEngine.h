@@ -54,8 +54,12 @@ namespace Audio {
 		static v8::Handle<v8::Value> GetDeviceName( const v8::Arguments& args );		//!< Returns the name of the device corresponding to a given ID number
 		static v8::Handle<v8::Value> GetNumDevices( const v8::Arguments& args );		//!< Returns the number of devices we have available
 
-		void copyBuffer( int uSampleFrames, float* sourceBuffer, float* destBuffer, bool bZeroSource = false ); //!< Copy one buffer into another
+		static v8::Handle<v8::Value> SetInputDevice( const v8::Arguments& args );		//!< Changes the input device
+		static v8::Handle<v8::Value> SetOutputDevice( const v8::Arguments& args );		//!< Changes the output device
+
+		void copyBuffer( int uSampleFrames, const float* sourceBuffer, float* destBuffer ); //!< Copy one buffer into another
 		void wrapObject( v8::Handle<v8::Object> object ); //!< Wraps a handle into an object
+		void restartStream( AudioEngine* engine );	//!< Stops and restarts our audio stream
 
 		PaStream* m_pStream;	//!< Our audio stream
 
@@ -74,7 +78,8 @@ namespace Audio {
 		int m_uSleepTime;		//!< The number of milliseconds we put the audio thread to 
 								//!< sleep when we're waiting for new data from the non-process thread
 
-		vector<vector<float> > m_fInputNonProcessSamples,	//!< Samples we can change from the main thread
+		vector<vector<float> > m_tempBuffer,
+							   m_fInputNonProcessSamples,	//!< Samples we can change from the main thread
 							   m_fOutputNonProcessSamples;	//!< Samples we can change from the main thread
 
 	}; // end class AudioEngine

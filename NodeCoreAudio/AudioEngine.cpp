@@ -74,8 +74,14 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 
 	// Allocate our output buffers
 	m_fOutputNonProcessSamples.resize( m_outputParameters.channelCount );	
-	for( unsigned int iChannel=0; iChannel<m_fInputNonProcessSamples.size(); ++iChannel ) {
+	for( unsigned int iChannel=0; iChannel<m_fOutputNonProcessSamples.size(); ++iChannel ) {
 		m_fOutputNonProcessSamples[iChannel].resize( FRAMES_PER_BUFFER );
+	} // end for each channel
+
+	// Allocate our temp buffers
+	m_tempBuffer.resize( m_outputParameters.channelCount );	
+	for( unsigned int iChannel=0; iChannel<m_tempBuffer.size(); ++iChannel ) {
+		m_tempBuffer[iChannel].resize( FRAMES_PER_BUFFER );
 	} // end for each channel
 
 	// Open an audio I/O stream. 
@@ -103,8 +109,8 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 /*! Our main audio callback */
 int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned long uSampleFrames, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags ) {
 
-	float* outputSamples = reinterpret_cast<float *>( output ),
-		 * inputSamples = reinterpret_cast<float *>( output );
+	float* outputSamples = reinterpret_cast<float *>( output );
+	const float* inputSamples =  reinterpret_cast<const float *>( input );
 
 	// If the number of samples we get here isn't right, just copy input to output and get out
 	if( uSampleFrames != FRAMES_PER_BUFFER ) {
@@ -123,6 +129,8 @@ int Audio::AudioEngine::audioCallback( const void *input, void *output, unsigned
 	// Copy the non-processing audio buffer back to the output samples
 	copyBuffer( uSampleFrames, &m_fOutputNonProcessSamples[0][0], outputSamples );
 	
+	m_bNewAudioData = true;
+
 	return 0;
 } // end AudioEngine::audioCallback()
 
@@ -135,7 +143,7 @@ void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	functionTemplate->SetClassName( String::NewSymbol("AudioEngine") );
 	functionTemplate->InstanceTemplate()->SetInternalFieldCount( 1 );
 
-	// Prototype
+	// Get
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("isActive"), FunctionTemplate::New(Audio::AudioEngine::IsActive)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("processIfNewData"), FunctionTemplate::New(Audio::AudioEngine::ProcessIfNewData)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getSampleRate"), FunctionTemplate::New(Audio::AudioEngine::GetSampleRate)->GetFunction() );
@@ -143,6 +151,11 @@ void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getOutputDeviceIndex"), FunctionTemplate::New(Audio::AudioEngine::GetOutputDeviceIndex)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getDeviceName"), FunctionTemplate::New(Audio::AudioEngine::GetDeviceName)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumDevices"), FunctionTemplate::New(Audio::AudioEngine::GetNumDevices)->GetFunction() );
+
+	// Set
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("setInputDevice"), FunctionTemplate::New(Audio::AudioEngine::SetInputDevice)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("setOutputDevice"), FunctionTemplate::New(Audio::AudioEngine::SetOutputDevice)->GetFunction() );
+
 
 	constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
 } // end AudioEngine::Init()
@@ -283,6 +296,82 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetNumDevices( const v8::Arguments& ar
 
 
 //////////////////////////////////////////////////////////////////////////////
+/*! Changes the input device */
+v8::Handle<v8::Value> Audio::AudioEngine::SetInputDevice( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	// Validate the input args
+	if( !args[0]->IsNumber() ) {
+		return ThrowException( Exception::TypeError(String::New("setInputDevice() requires a device index")) );
+	}
+
+	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	// Set the new input device
+	engine->m_inputParameters.device = deviceIndex->NumberValue();
+
+	// Restart the audio stream
+	engine->restartStream( engine );
+
+	return scope.Close( Undefined() );
+} // end AudioEngine::SetInputDevice()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Changes the output device */
+v8::Handle<v8::Value> Audio::AudioEngine::SetOutputDevice( const v8::Arguments& args ) {
+	HandleScope scope;
+
+	// Validate the output args
+	if( !args[0]->IsNumber() ) {
+		return ThrowException( Exception::TypeError(String::New("setOutputDevice() requires a device index")) );
+	}
+
+	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
+
+	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+
+	// Set the new output device
+	engine->m_outputParameters.device = deviceIndex->NumberValue();
+
+	// Restart the audio stream
+	engine->restartStream( engine );
+
+	return scope.Close( Undefined() );
+} // end AudioEngine::SetOutputDevice()
+
+
+//////////////////////////////////////////////////////////////////////////////
+/*! Stops and restarts our audio stream */
+void Audio::AudioEngine::restartStream( AudioEngine* engine ) {
+	Pa_StopStream( engine->m_pStream );
+	Pa_CloseStream( engine->m_pStream );
+
+	PaError err;
+
+	// Open an audio I/O stream. 
+	err = Pa_OpenStream(  &m_pStream,
+		&m_inputParameters,
+		&m_outputParameters,
+		SAMPLE_RATE,
+		FRAMES_PER_BUFFER,
+		paClipOff,				// We won't output out of range samples so don't bother clipping them
+		audioCallbackSource,	// this is your callback function
+		this );					// This is a pointer that will be passed to your callback*/
+
+	if( err != paNoError ) 
+		ThrowException( Exception::TypeError(String::New("Failed to open audio stream")) );
+
+	err = Pa_StartStream( engine->m_pStream );
+
+	if( err != paNoError ) 
+		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
+} // end AudioEngine::restartStream()
+
+
+//////////////////////////////////////////////////////////////////////////////
 /*! Hands audio to a javascript callback if we have new data */
 v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments& args ) {
 	HandleScope scope;
@@ -308,19 +397,15 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 		engine->m_inputBuffer->Set( v8::Number::New(iSample), v8::Number::New(fSample) );
 	}
 
-	// Copy output 
-	engine->m_outputBuffer = v8::Array::New( FRAMES_PER_BUFFER );
-	for (int iSample = 0; iSample < (signed)FRAMES_PER_BUFFER; iSample++) {
-		float fSample= engine->m_fOutputNonProcessSamples[0][iSample];
-		engine->m_outputBuffer->Set(v8::Number::New(iSample), v8::Number::New(fSample));
-	}
-
 	const unsigned argc = 2;
 	Local<Value> argv[argc] = { Local<Value>::New(engine->m_uSampleFrames), engine->m_inputBuffer };
 
 	Handle<Function> func = Handle<Function>::Cast( args[0] );
+
+	// Call through to JavaScript with our audio data
 	v8::Handle<Object> result = v8::Handle<Object>::Cast(func->Call( args.This(), argc, argv ) );
 
+	// Make sure we returned some audio data from our javascript processing function
 	int length = 0;
 	if( !result->IsArray() ) {
 		return ThrowException( Exception::TypeError(String::New("Must return output buffer from processing function")) );
@@ -328,11 +413,13 @@ v8::Handle<v8::Value> Audio::AudioEngine::ProcessIfNewData( const v8::Arguments&
 		length = result->Get(v8::String::New("length"))->ToObject()->Uint32Value();
 	}
 
+
+	// Copy the data back into the engine for output to the sound card
 	for (int iSample = 0; iSample < length; iSample++) {
 		v8::Local<v8::Value> element = result->Get(iSample);
 
 		float fSample= (float)element->NumberValue();
-		engine->m_fOutputNonProcessSamples[0][iSample] = fSample ;
+		engine->m_fOutputNonProcessSamples[0][iSample] = fSample;
 	}
 
 	engine->m_bNewAudioData = true;
@@ -350,18 +437,12 @@ void Audio::AudioEngine::wrapObject( v8::Handle<v8::Object> object ) {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Copy one buffer into another */
-void Audio::AudioEngine::copyBuffer( int uSampleFrames, float* sourceBuffer, float* destBuffer, bool bZeroSource ) {
+void Audio::AudioEngine::copyBuffer( int uSampleFrames, const float* sourceBuffer, float* destBuffer ) {
 	
 	// TODO: Vectorize this!
 	for( int iSample=0; iSample<uSampleFrames; ++iSample ) {
 		destBuffer[iSample] = sourceBuffer[iSample];
 	} // end for each sample
-
-	if( bZeroSource ) {
-		for( int iSample=0; iSample<uSampleFrames; ++iSample ) {
-			sourceBuffer[iSample] = 0.0f;
-		} // end for each sample
-	} // end if zeroing source buffer
 
 } // end AudioEngine::copyBuffer()
 
