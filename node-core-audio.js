@@ -35,13 +35,16 @@ var dflt = function(a, b) { 													// Default a to b if a is undefined
 function AudioEngine() {
 	var audioEngineImpl = require( "./lib/NodeCoreAudio" );
 
-	this.audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
-		console.log( "some function" );
-	});
+	this.audioEngine = audioEngineImpl.createAudioEngine( function() {} );
 	
 	this.processingCallbacks = [];	
 	this.outputBuffer = [];
 	this.tempBuffer = [];
+	
+	// Start polling the audio engine for data as fast as we can
+	setInterval( function() {	
+		this.audioEngine.processIfNewData( this.processAudio );
+	}, 0 );
 } // end AudioEngine();
 
 
