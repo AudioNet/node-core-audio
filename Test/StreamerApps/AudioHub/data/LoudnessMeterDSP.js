@@ -48,8 +48,6 @@ LoudnessMeter.prototype.processLoudness = function( numSamples, audioBuffer ) {
 	}
 	
 	var averageLoudness = this.tempSum / numSamples;
-	
-	console.log( this.tempSum );
 
 	this.socket.emit( "newLoudnessData", {loudness: averageLoudness} );
 } // end LoudnessMeter.getWidth()
