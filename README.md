@@ -1,14 +1,15 @@
 Node Core Audio
 ==================
-This is a C++ extension for node.js that gives javascript access to audio buffers. 
+This is a C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionality
 
 Right now, it's basically a node.js binding for PortAudio.
 
 Usage
 =====
-YOU CAN'T USE IT YET! Stop back in later when this actually does something!
-
-If you care about this, feel free to email me about it. I'll finish it faster if I know people are interested.
+```javascript
+// Create an instance of coreAudio
+var coreAudio = require('node-core-audio').createNewAudioEngine();
+```
 
 License
 =====
