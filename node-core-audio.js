@@ -42,43 +42,56 @@ function AudioEngine() {
 	this.tempBuffer = [];
 	
 	// Start polling the audio engine for data as fast as we can
+	
+	var self = this;
 	setInterval( function() {	
-		this.audioEngine.processIfNewData( this.processAudio );
+		self.audioEngine.processIfNewData( self.getProcessAudio() );
 	}, 0 );
 } // end AudioEngine();
 
 
 //////////////////////////////////////////////////////////////////////////
 // Main audio processing function
-AudioEngine.prototype.processAudio = function( numSamples, inputBuffer ) {
-	// If we don't have any processing callbacks, just get out
-	if( this.processingCallbacks.length == 0 )
-		return inputBuffer;
+AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 
-	// Grab the buffers we're going to need
-	var outputBuffer = this.outputBuffer;
-	var tempBuffer = this.tempBuffer;
-	
-	// Initialize our output buffer to 0's
-	for( var iSample = 0; iSample < numSamples; ++iSample ) {
-		outputBuffer[iSample] = 0;
-	}
+	var self = this;
+	var processAudio = function( numSamples, inputBuffer ) {	
+		// If we don't have any processing callbacks, just get out
+		if( self.processingCallbacks.length == 0 )
+			return inputBuffer;
+			
 
-	// Call through to all of our processing callbacks
-	for( var iCallback = 0; iCallback < this.processingCallbacks.length; ++iCallback ) {
-		tempBuffer = this.processingCallbacks[iCallback]( numSamples, inputBuffer );
+		// Grab the buffers we're going to need
+		var outputBuffer = self.outputBuffer;
+		//var tempBuffer = self.tempBuffer;
 		
-		// Add the callback's output samples into our output buffer
-		// Normalize by dividing by the number of audio callbacks we have, otherwise
-		// the audio will get very loud very quickly
+		outputBuffer = inputBuffer;
+		/*
+		// Initialize our output buffer to 0's
 		for( var iSample = 0; iSample < numSamples; ++iSample ) {
-			outputBuffer[iSample] += tempBuffer[iSample] / this.processingCallbacks.length;
+			outputBuffer[iSample] = 0;
 		}
-	} // end for each callback
+		*/
+
+		// Call through to all of our processing callbacks
+		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
+			outputBuffer = self.processingCallbacks[iCallback]( numSamples, outputBuffer );
+			/*
+			// Add the callback's output samples into our output buffer
+			// Normalize by dividing by the number of audio callbacks we have, otherwise
+			// the audio will get very loud very quickly
+			for( var iSample = 0; iSample < numSamples; ++iSample ) {
+				outputBuffer[iSample] += tempBuffer[iSample] / self.processingCallbacks.length;
+			}
+			*/
+		} // end for each callback
+		
+		// Return our output audio to the sound card
+		return outputBuffer;
+	} // end processAudio()
 	
-	// Return our output audio to the sound card
-	return outputBuffer;
-} // end AudioEngine.processAudio()
+	return processAudio;
+} // end AudioEngine.getProcessAudio()
 
 
 //////////////////////////////////////////////////////////////////////////
