@@ -1,5 +1,5 @@
 { "name": "node-core-audio",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Mike Vegeto <michael.vegeto@gmail.com>",
   "description": "A node.js wrapper of PortAudio which gives access to sound card audio data",
   "main": "./node-core-audio",
