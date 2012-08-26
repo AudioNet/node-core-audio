@@ -1,10 +1,10 @@
 { "name": "node-core-audio",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Mike Vegeto <michael.vegeto@gmail.com>",
   "description": "A node.js wrapper of PortAudio which gives access to sound card audio data",
   "main": "./node-core-audio",
   "engines": { "node": ">=0.8.0" },
-  "keywords": [ "audio", "dsp", "processing", "portaudio", "sound", "synth", "signal"  ],
+  "keywords": [ "audio", "dsp", "processing", "portaudio", "sound", "synth", "signal", "FFT"  ],
   "licenses": [ { "type": "MIT", "url": "http://raw.github.com/ZECTBynmo/node-core-audio/master/LICENSE" } ],
   "repository": { "type": "git", "url": "http://github.com/ZECTBynmo/node-core-audio.git" }
 }
