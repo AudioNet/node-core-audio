@@ -70,7 +70,7 @@ for( var iSample = 0; iSample < numSamples; ++iSample ) {
 }
 ```
 
-Audio Engine Options (not fully implimented as of version 0.0.4)
+Audio Engine Options (not implimented as of version 0.0.5)
 =====
 * Sample rate - number of samples per second in the audio stream
 * Bit depth - Number of bits used to represent sample values
@@ -80,7 +80,34 @@ Audio Engine Options (not fully implimented as of version 0.0.4)
 API (much more to come!)
 =====
 ```javascript
-coreAudio.addAudioCallback( ...your processing function... );
+var coreAudio = require("node-core-audio").createNewAudioEngine();
+
+// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
+coreAudio.addAudioCallback( function(numSamples, inputBuffer){ return inputBuffer; } );
+
+// Returns whether the audio engine is active
+var isActive = coreAudio.isActive();
+
+// Returns the sample rate of the audio engine
+var sampleRate = coreAudio.getSampleRate();
+
+// Returns the index of the input audio device 
+var inputDeviceIndex = coreAudio.getInputDeviceIndex();
+
+// Returns the index of the output audio device 
+var outputDeviceIndex = coreAudio.getOutputDeviceIndex();
+
+// Returns the name of a given device 
+var inputDeviceName = coreAudio.getDeviceName( inputDeviceIndex );
+
+// Returns the total number of audio devices
+var numDevices = coreAudio.getNumDevices();
+
+// Sets the input audio device
+coreAudio.setInputDevice( someDeviceId );
+
+// Sets the output audio device
+coreAudio.setOutputDevice( someDeviceId );
 ```
 
 Known Issues / TODO

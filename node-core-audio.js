@@ -99,3 +99,59 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 AudioEngine.prototype.addAudioCallback = function( callback ) {
 	this.processingCallbacks.push( callback );
 } // end AudioEngine.processAudio()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns whether the audio engine is active 
+AudioEngine.prototype.isActive = function() {
+	return this.audioEngine.isActive();
+} // end AudioEngine.isActive()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the sample rate of the audio engine 
+AudioEngine.prototype.getSampleRate = function() {
+	return this.audioEngine.getSampleRate();
+} // end AudioEngine.getSampleRate()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the index of the input audio device 
+AudioEngine.prototype.getInputDeviceIndex = function() {
+	return this.audioEngine.getInputDeviceIndex();
+} // end AudioEngine.getInputDeviceIndex()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the index of the output audio device 
+AudioEngine.prototype.getOutputDeviceIndex = function() {
+	return this.audioEngine.getOutputDeviceIndex();
+} // end AudioEngine.getOutputDeviceIndex()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the name of a given device 
+AudioEngine.prototype.getDeviceName = function( deviceId ) {
+	return this.audioEngine.getDeviceName( deviceId );
+} // end AudioEngine.getDeviceName()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the total number of audio devices
+AudioEngine.prototype.getNumDevices = function() {
+	return this.audioEngine.getNumDevices();
+} // end AudioEngine.getNumDevices()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Sets the input audio device
+AudioEngine.prototype.setInputDevice = function( deviceId ) {
+	return this.audioEngine.setInputDevice( deviceId );
+} // end AudioEngine.setInputDevice()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Sets the output audio device
+AudioEngine.prototype.setOutputDevice = function( deviceId ) {
+	return this.audioEngine.setOutputDevice( deviceId );
+} // end AudioEngine.setOutputDevice()
