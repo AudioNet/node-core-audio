@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Node-core-audio by ZECTBynmo</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/ZECTBynmo/node-core-audio">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/ZECTBynmo/node-core-audio/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/ZECTBynmo/node-core-audio/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Node-core-audio</h1>
+          <p>Core audio processing funcionality for node.js</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/ZECTBynmo">ZECTBynmo</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="http://twitter.com/#!/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>Node Core Audio</h1>
+
+<p>This is a C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionality</p>
+
+<p>Right now, it's basically a node.js binding for PortAudio.</p>
+
+<h1>Disclaimer</h1>
+
+<p>This extension is still under heavy development, and should be considered 
+pre-alpha. I wouldn't suggest you even try to use it, unless you're willing to roll up your
+sleeves from time to time.</p>
+
+<p>I am actively working on this, but if you want to see it happen faster, please 
+send me an email!</p>
+
+<h1>Basic Usage</h1>
+
+<p>This package is setup as a "pull" system, meaning that the audio engine will 
+call your processing function when it's ready to get new samples, as opposed
+to a "push" system, where you post audio to the sound card.</p>
+
+<p>Below is the most basic use of the audio engine. We create a new instance of
+node-core-audio, and then give it our processing function. The audio engine
+will call the audio callback whenever it needs an output buffer to send to
+the sound card.</p>
+
+<div class="highlight"><pre><span class="c1">// Create a new instance of node-core-audio</span>
+<span class="kd">var</span> <span class="nx">coreAudio</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">"node-core-audio"</span><span class="p">).</span><span class="nx">createNewAudioEngine</span><span class="p">();</span>
+
+<span class="c1">// Add an audio processing callback</span>
+<span class="c1">// Note: This function MUST return a buffer to the audio engine! If </span>
+<span class="c1">// not, your application will throw an exception.</span>
+<span class="nx">coreAudio</span><span class="p">.</span><span class="nx">addAudioCallback</span><span class="p">(</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">numSamples</span><span class="p">,</span> <span class="nx">inputBuffer</span> <span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span> <span class="s2">"sweet"</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="nx">inputBuffer</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+
+<h1>Important! Processing Thread</h1>
+
+<p>When you are writing code inside of your audio callback, you are operating on
+the processing thread of the application. Any large allocations will cause the
+program to crash, and you will get no error whatsoever. This is a bug, and I
+hope to fix it soon.</p>
+
+<p>DO NOT DO THESE INSIDE THE AUDIO CALLBACK (or anything like them):</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">();</span>        <span class="c1">// Allocating for arrays is not okay</span>
+<span class="kd">var</span> <span class="nx">object</span> <span class="o">=</span> <span class="p">{};</span>                <span class="c1">// Allocating for objects is not okay</span>
+<span class="kd">var</span> <span class="nx">callback</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(){};</span>    <span class="c1">// Allocating for functions is not okay</span>
+<span class="nx">socket</span><span class="p">.</span><span class="nx">emit</span><span class="p">(...);</span>               <span class="c1">// Doing socket stuff is not okay (because it causes object/array allocations)</span>
+</pre></div>
+
+<p>The basic principle is that you should have everything ready to go before you enter
+the processing function. Buffers, objects, and functions should be created in a 
+constructor or static function outside of the audio callback.</p>
+
+<p>Simple allocations and assignments are okay (you CAN do these):</p>
+
+<div class="highlight"><pre><span class="c1">// Simple allocation</span>
+<span class="kd">var</span> <span class="nx">someValue</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span> 
+
+<span class="c1">// Assignment of whole buffers</span>
+<span class="nx">preAllocatedBuffer</span> <span class="o">=</span> <span class="nx">inputBuffer</span><span class="p">;</span>
+
+<span class="c1">// Sample by sample processing</span>
+<span class="k">for</span><span class="p">(</span> <span class="kd">var</span> <span class="nx">iSample</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">iSample</span> <span class="o">&lt;</span> <span class="nx">numSamples</span><span class="p">;</span> <span class="o">++</span><span class="nx">iSample</span> <span class="p">)</span> <span class="p">{</span>
+    <span class="nx">preAllocatedBuffer</span><span class="p">[</span><span class="nx">iSample</span><span class="p">]</span> <span class="o">=</span> <span class="nx">numSamples</span> <span class="o">/</span> <span class="nx">iSample</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+<h1>Audio Engine Options (not implimented as of version 0.0.5)</h1>
+
+<ul>
+<li>Sample rate - number of samples per second in the audio stream</li>
+<li>Bit depth - Number of bits used to represent sample values</li>
+<li>Buffer length - Number of samples per buffer</li>
+<li>Interlaced / Deinterlaced - determines whether samples are given to you as a two dimensional array (buffer[channel][sample]) or one buffer with samples from alternating channels</li>
+</ul><h1>API (much more to come!)</h1>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">coreAudio</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">"node-core-audio"</span><span class="p">).</span><span class="nx">createNewAudioEngine</span><span class="p">();</span>
+
+<span class="c1">// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)</span>
+<span class="nx">coreAudio</span><span class="p">.</span><span class="nx">addAudioCallback</span><span class="p">(</span> <span class="kd">function</span><span class="p">(</span><span class="nx">numSamples</span><span class="p">,</span> <span class="nx">inputBuffer</span><span class="p">){</span> <span class="k">return</span> <span class="nx">inputBuffer</span><span class="p">;</span> <span class="p">}</span> <span class="p">);</span>
+
+<span class="c1">// Returns whether the audio engine is active</span>
+<span class="kd">var</span> <span class="nx">isActive</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">isActive</span><span class="p">();</span>
+
+<span class="c1">// Returns the sample rate of the audio engine</span>
+<span class="kd">var</span> <span class="nx">sampleRate</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getSampleRate</span><span class="p">();</span>
+
+<span class="c1">// Returns the index of the input audio device </span>
+<span class="kd">var</span> <span class="nx">inputDeviceIndex</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getInputDeviceIndex</span><span class="p">();</span>
+
+<span class="c1">// Returns the index of the output audio device </span>
+<span class="kd">var</span> <span class="nx">outputDeviceIndex</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getOutputDeviceIndex</span><span class="p">();</span>
+
+<span class="c1">// Returns the name of a given device </span>
+<span class="kd">var</span> <span class="nx">inputDeviceName</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getDeviceName</span><span class="p">(</span> <span class="nx">inputDeviceIndex</span> <span class="p">);</span>
+
+<span class="c1">// Returns the total number of audio devices</span>
+<span class="kd">var</span> <span class="nx">numDevices</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getNumDevices</span><span class="p">();</span>
+
+<span class="c1">// Sets the input audio device</span>
+<span class="nx">coreAudio</span><span class="p">.</span><span class="nx">setInputDevice</span><span class="p">(</span> <span class="nx">someDeviceId</span> <span class="p">);</span>
+
+<span class="c1">// Sets the output audio device</span>
+<span class="nx">coreAudio</span><span class="p">.</span><span class="nx">setOutputDevice</span><span class="p">(</span> <span class="nx">someDeviceId</span> <span class="p">);</span>
+</pre></div>
+
+<h1>Known Issues / TODO</h1>
+
+<p>I know, I know, I'm sorry. I'll fix them, don't worry.</p>
+
+<ul>
+<li>Create thread for Javascript/UI - allocations from javascript shouldn't cause crashes</li>
+<li>Add FFTW to C++ extension, so you can get fast FFT's from javascript, and also register for the FFT of incoming audio, rather than the audio itself</li>
+<li>Add support for streaming audio over sockets</li>
+</ul><h1>License</h1>
+
+<p>Copyright (c) 2012, Mike Vegeto (<a href="mailto:michael.vegeto@gmail.com">michael.vegeto@gmail.com</a>)
+All rights reserved.</p>
+
+<p>Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the  nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.</p>
+
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL MIKE VEGETO BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
