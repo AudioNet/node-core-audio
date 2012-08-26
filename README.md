@@ -70,7 +70,7 @@ for( var iSample = 0; iSample < numSamples; ++iSample ) {
 }
 ```
 
-Audio Engine Options (these are not fully implimented as of version 0.0.4)
+Audio Engine Options (not fully implimented as of version 0.0.4)
 =====
 * Sample rate - number of samples per second in the audio stream
 * Bit depth - Number of bits used to represent sample values
