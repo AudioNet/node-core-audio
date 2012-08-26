@@ -7,8 +7,16 @@ Right now, it's basically a node.js binding for PortAudio.
 Usage
 =====
 ```javascript
-// Create an instance of coreAudio
-var coreAudio = require('node-core-audio').createNewAudioEngine();
+// Create a new instance of node-core-audio
+var coreAudio = require("node-core-audio").createNewAudioEngine();
+
+// Add an audio processing callback
+// Note: This function MUST return a buffer of audio! If not, your
+// application will throw an exception and crash.
+coreAudio.addAudioCallback( function( numSamples, inputBuffer ) {
+	console.log( "sweet" );
+	return inputBuffer;
+});
 ```
 
 License
