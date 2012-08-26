@@ -31,12 +31,7 @@
 				]
 			],
 			'copies':[
-				{
-					'destination': '<(module_root_dir)/Test/StreamerApps/AudioHub/data/node_modules/node-core-audio/',
-					'files': [
-						'<(module_root_dir)/build/Release/NodeCoreAudio.node',
-						'<(module_root_dir)/gyp/lib/portaudio_x86.dll'
-					],
+				{	
 					'destination': '<(module_root_dir)/lib/',
 					'files': [
 						'<(module_root_dir)/build/Release/NodeCoreAudio.node',
