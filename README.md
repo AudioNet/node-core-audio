@@ -4,6 +4,12 @@ This is a C++ extension for node.js that gives javascript access to audio buffer
 
 Right now, it's basically a node.js binding for PortAudio.
 
+Installation
+=====
+```
+npm install node-core-audio
+```
+
 Disclaimer
 =====
 This extension is still under heavy development, and should be considered 
