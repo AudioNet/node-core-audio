@@ -109,6 +109,12 @@ var inputDeviceName = coreAudio.getDeviceName( inputDeviceIndex );
 // Returns the total number of audio devices
 var numDevices = coreAudio.getNumDevices();
 
+// Returns the number of input channels
+var numChannels = coreAudio.getNumInputChannels();
+
+// Returns the number of output channels
+var numChannels = coreAudio.getNumOutputChannels();
+
 // Sets the input audio device
 coreAudio.setInputDevice( someDeviceId );
 
@@ -118,7 +124,6 @@ coreAudio.setOutputDevice( someDeviceId );
 
 Known Issues / TODO
 =====
-I know, I know, I'm sorry. I'll fix them, don't worry.
 
 * Create thread for Javascript/UI - allocations from javascript shouldn't cause crashes
 * Add FFTW to C++ extension, so you can get fast FFT's from javascript, and also register for the FFT of incoming audio, rather than the audio itself
