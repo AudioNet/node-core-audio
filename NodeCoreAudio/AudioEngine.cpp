@@ -151,6 +151,8 @@ void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getOutputDeviceIndex"), FunctionTemplate::New(Audio::AudioEngine::GetOutputDeviceIndex)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getDeviceName"), FunctionTemplate::New(Audio::AudioEngine::GetDeviceName)->GetFunction() );
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumDevices"), FunctionTemplate::New(Audio::AudioEngine::GetNumDevices)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumInputChannels"), FunctionTemplate::New(Audio::AudioEngine::GetNumInputChannels)->GetFunction() );
+	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumOutputChannels"), FunctionTemplate::New(Audio::AudioEngine::GetNumOutputChannels)->GetFunction() );
 
 	// Set
 	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("setInputDevice"), FunctionTemplate::New(Audio::AudioEngine::SetInputDevice)->GetFunction() );
