@@ -21,7 +21,10 @@ var globalNamespace = {};
 
 //////////////////////////////////////////////////////////////////////////
 // Namespace (lol)
-var log = function( a ) { console.log(a); };
+var SHOW_DEBUG_PRINTS = true;
+var MAX_SUPPORTED_CHANNELS = 6;													// We need to allocate our process audio for the max channels, 
+																				// so we have to set some reasonable limit																				
+var log = function( a ) { if(SHOW_DEBUG_PRINTS) console.log(a); };				// A log function we can turn off
 var exists = function(a) { return typeof(a) == "undefined" ? false : true; };	// Check whether a variable exists
 var dflt = function(a, b) { 													// Default a to b if a is undefined
 	if( typeof(a) === "undefined" ){ 
@@ -40,9 +43,14 @@ function AudioEngine() {
 	this.processingCallbacks = [];	
 	this.outputBuffer = [];
 	this.tempBuffer = [];
+	this.processBuffer = [];
 	
-	// Start polling the audio engine for data as fast as we can
+	// Allocate a processing buffer for each of our channels
+	for( var iChannel = 0; iChannel<MAX_SUPPORTED_CHANNELS; ++iChannel ) {
+		this.processBuffer[iChannel] = [];
+	}
 	
+	// Start polling the audio engine for data as fast as we can	
 	var self = this;
 	setInterval( function() {	
 		self.audioEngine.processIfNewData( self.getProcessAudio() );
@@ -53,38 +61,27 @@ function AudioEngine() {
 //////////////////////////////////////////////////////////////////////////
 // Main audio processing function
 AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
-
 	var self = this;
-	var processAudio = function( numSamples, inputBuffer ) {	
+	var numChannels = this.audioEngine.getNumInputChannels();
+	
+	var processAudio = function( numSamples, inputBuffer ) {		
 		// If we don't have any processing callbacks, just get out
 		if( self.processingCallbacks.length == 0 )
 			return inputBuffer;
 			
-
-		// Grab the buffers we're going to need
-		var outputBuffer = self.outputBuffer;
-		//var tempBuffer = self.tempBuffer;
-		
-		outputBuffer = inputBuffer;
-		/*
-		// Initialize our output buffer to 0's
-		for( var iSample = 0; iSample < numSamples; ++iSample ) {
-			outputBuffer[iSample] = 0;
-		}
-		*/
+		var processBuffer = self.processBuffer;
+			
+		// We need to deinterleave the inputbuffer
+		deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
 
 		// Call through to all of our processing callbacks
 		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
-			outputBuffer = self.processingCallbacks[iCallback]( numSamples, outputBuffer );
-			/*
-			// Add the callback's output samples into our output buffer
-			// Normalize by dividing by the number of audio callbacks we have, otherwise
-			// the audio will get very loud very quickly
-			for( var iSample = 0; iSample < numSamples; ++iSample ) {
-				outputBuffer[iSample] += tempBuffer[iSample] / self.processingCallbacks.length;
-			}
-			*/
+			processBuffer = self.processingCallbacks[iCallback]( numSamples, processBuffer );
 		} // end for each callback
+		
+		var outputBuffer = self.outputBuffer;
+		
+		interleave( processBuffer, outputBuffer, numSamples, numChannels );
 		
 		// Return our output audio to the sound card
 		return outputBuffer;
@@ -98,7 +95,7 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 // Add a processing callback 
 AudioEngine.prototype.addAudioCallback = function( callback ) {
 	this.processingCallbacks.push( callback );
-} // end AudioEngine.processAudio()
+} // end AudioEngine.addAudioCallback()
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -155,3 +152,39 @@ AudioEngine.prototype.setInputDevice = function( deviceId ) {
 AudioEngine.prototype.setOutputDevice = function( deviceId ) {
 	return this.audioEngine.setOutputDevice( deviceId );
 } // end AudioEngine.setOutputDevice()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the number of input channels
+AudioEngine.prototype.getNumInputChannels = function() {
+	return this.audioEngine.getNumInputChannels();
+} // end AudioEngine.getNumInputChannels()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Returns the number of output channels
+AudioEngine.prototype.getNumOutputChannels = function() {
+	return this.audioEngine.getNumOutputChannels();
+} // end AudioEngine.getNumOutputChannels()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Splits a 1d buffer into its channel components
+function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
+	for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
+		for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
+			outputBuffer[iChannel][iSample] = inputBuffer[iSample + iChannel];
+		} // end for each channel		
+	} // end for each sample position
+} // end deInterleave()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Joins multidimensional array into single buffer
+function interleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
+	for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
+		for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
+			outputBuffer[iSample + iChannel] = inputBuffer[iChannel][iSample];
+		} // end for each channel		
+	} // end for each sample position
+} // end interleave()
