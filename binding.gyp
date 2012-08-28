@@ -32,9 +32,8 @@
 			],
 			'copies':[
 				{	
-					'destination': '<(module_root_dir)/lib/',
+					'destination': '<(module_root_dir)/build/Release/',
 					'files': [
-						'<(module_root_dir)/build/Release/NodeCoreAudio.node',
 						'<(module_root_dir)/gyp/lib/portaudio_x86.dll'
 					]
 				}

@@ -36,7 +36,7 @@ var dflt = function(a, b) { 													// Default a to b if a is undefined
 //////////////////////////////////////////////////////////////////////////
 // Constructor
 function AudioEngine() {
-	var audioEngineImpl = require( "./lib/NodeCoreAudio" );
+	var audioEngineImpl = require( "./build/Release/NodeCoreAudio" );
 
 	this.audioEngine = audioEngineImpl.createAudioEngine( function() {} );
 	
