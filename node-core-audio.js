@@ -114,6 +114,13 @@ AudioEngine.prototype.addAudioCallback = function( callback ) {
 
 
 //////////////////////////////////////////////////////////////////////////
+// Add a UI update callback
+AudioEngine.prototype.addUpdateCallback = function( callback ) {
+	this.uiUpdateCallbacks.push( callback );
+} // end AudioEngine.addUpdateCallback()
+
+
+//////////////////////////////////////////////////////////////////////////
 // Returns whether the audio engine is active 
 AudioEngine.prototype.isActive = function() {
 	return this.audioEngine.isActive();
