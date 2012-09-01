@@ -99,7 +99,7 @@ var coreAudio = require("node-core-audio").createNewAudioEngine();
 // Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
 coreAudio.addAudioCallback( function(numSamples, inputBuffer){ return inputBuffer; } );
 
-// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
+// Adds a UI update callback off of the audio thread
 coreAudio.addUpdateCallback( function(){console.log("sweet");} );
 
 // Returns whether the audio engine is active
