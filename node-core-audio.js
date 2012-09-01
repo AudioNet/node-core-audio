@@ -40,7 +40,10 @@ function AudioEngine() {
 
 	this.audioEngine = audioEngineImpl.createAudioEngine( function() {} );
 	
-	this.processingCallbacks = [];	
+	this.processingCallbacks = [];
+	this.uiUpdateCallbacks = [];
+	this.didProcessAudio = false;
+	
 	this.outputBuffer = [];
 	this.tempBuffer = [];
 	this.processBuffer = [];
@@ -53,7 +56,17 @@ function AudioEngine() {
 	// Start polling the audio engine for data as fast as we can	
 	var self = this;
 	setInterval( function() {	
+		self.didProcessAudio = false;
+		
+		// Try to process audio
 		self.audioEngine.processIfNewData( self.getProcessAudio() );
+		
+		// If we processed some audio, call our UI updates
+		if( self.didProcessAudio ) {
+			for( var iUpdate=0; iUpdate < self.uiUpdateCallbacks.length; ++iUpdate ) {
+				self.uiUpdateCallbacks[iUpdate]();
+			}
+		}
 	}, 0 );
 } // end AudioEngine();
 
@@ -82,6 +95,8 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 		var outputBuffer = self.outputBuffer;
 		
 		interleave( processBuffer, outputBuffer, numSamples, numChannels );
+		
+		self.didProcessAudio = true;
 		
 		// Return our output audio to the sound card
 		return outputBuffer;
