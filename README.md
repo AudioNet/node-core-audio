@@ -76,7 +76,15 @@ for( var iSample = 0; iSample < numSamples; ++iSample ) {
 }
 ```
 
-Audio Engine Options (not implimented as of version 0.0.5)
+UI Update callbacks
+=====
+If you would like to get a callback after processing has completed (not on the audio thread, so complex allocation is safe), add a UI callback.
+
+```javascript
+coreAudio.addUpdateCallback( ...some callback function... );
+```
+
+Audio Engine Options (not implimented as of version 0.0.7)
 =====
 * Sample rate - number of samples per second in the audio stream
 * Bit depth - Number of bits used to represent sample values
@@ -90,6 +98,9 @@ var coreAudio = require("node-core-audio").createNewAudioEngine();
 
 // Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
 coreAudio.addAudioCallback( function(numSamples, inputBuffer){ return inputBuffer; } );
+
+// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
+coreAudio.addUpdateCallback( function(){console.log("sweet");} );
 
 // Returns whether the audio engine is active
 var isActive = coreAudio.isActive();
