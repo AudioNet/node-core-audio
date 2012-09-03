@@ -115,7 +115,14 @@ constructor or static function outside of the audio callback.</p>
 <span class="p">}</span>
 </pre></div>
 
-<h1>Audio Engine Options (not implimented as of version 0.0.5)</h1>
+<h1>UI Update callbacks</h1>
+
+<p>If you would like to get a callback after processing has completed (not on the audio thread, so complex allocation is safe), add a UI callback.</p>
+
+<div class="highlight"><pre><span class="nx">coreAudio</span><span class="p">.</span><span class="nx">addUpdateCallback</span><span class="p">(</span> <span class="p">...</span><span class="nx">some</span> <span class="nx">callback</span> <span class="kd">function</span><span class="p">...</span> <span class="p">);</span>
+</pre></div>
+
+<h1>Audio Engine Options (not implimented as of version 0.0.7)</h1>
 
 <ul>
 <li>Sample rate - number of samples per second in the audio stream</li>
@@ -128,6 +135,9 @@ constructor or static function outside of the audio callback.</p>
 
 <span class="c1">// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)</span>
 <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">addAudioCallback</span><span class="p">(</span> <span class="kd">function</span><span class="p">(</span><span class="nx">numSamples</span><span class="p">,</span> <span class="nx">inputBuffer</span><span class="p">){</span> <span class="k">return</span> <span class="nx">inputBuffer</span><span class="p">;</span> <span class="p">}</span> <span class="p">);</span>
+
+<span class="c1">// Adds a UI update callback off of the audio thread</span>
+<span class="nx">coreAudio</span><span class="p">.</span><span class="nx">addUpdateCallback</span><span class="p">(</span> <span class="kd">function</span><span class="p">(){</span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">"sweet"</span><span class="p">);}</span> <span class="p">);</span>
 
 <span class="c1">// Returns whether the audio engine is active</span>
 <span class="kd">var</span> <span class="nx">isActive</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">isActive</span><span class="p">();</span>
@@ -147,6 +157,12 @@ constructor or static function outside of the audio callback.</p>
 <span class="c1">// Returns the total number of audio devices</span>
 <span class="kd">var</span> <span class="nx">numDevices</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getNumDevices</span><span class="p">();</span>
 
+<span class="c1">// Returns the number of input channels</span>
+<span class="kd">var</span> <span class="nx">numChannels</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getNumInputChannels</span><span class="p">();</span>
+
+<span class="c1">// Returns the number of output channels</span>
+<span class="kd">var</span> <span class="nx">numChannels</span> <span class="o">=</span> <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">getNumOutputChannels</span><span class="p">();</span>
+
 <span class="c1">// Sets the input audio device</span>
 <span class="nx">coreAudio</span><span class="p">.</span><span class="nx">setInputDevice</span><span class="p">(</span> <span class="nx">someDeviceId</span> <span class="p">);</span>
 
@@ -155,8 +171,6 @@ constructor or static function outside of the audio callback.</p>
 </pre></div>
 
 <h1>Known Issues / TODO</h1>
-
-<p>I know, I know, I'm sorry. I'll fix them, don't worry.</p>
 
 <ul>
 <li>Create thread for Javascript/UI - allocations from javascript shouldn't cause crashes</li>
