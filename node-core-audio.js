@@ -115,7 +115,7 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 //////////////////////////////////////////////////////////////////////////
 // Add a processing callback 
 AudioEngine.prototype.createAudioHub = function( port ) {
-	this.audioStreamer = require("AudioStreamer").createNewAudioStreamer( port );
+	this.audioStreamer = require("audio-streamer").createNewAudioStreamer( port );
 } // end AudioEngine.createAudiohub()
 
 
