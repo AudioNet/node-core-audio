@@ -4,7 +4,7 @@
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
   "engines": { "node": ">=0.8.0" },
-  "keywords": [ "audio", "dsp", "processing", "portaudio", "sound", "synth", "signal", "streaming", buffer" ],
+  "keywords": [ "audio", "dsp", "processing", "portaudio", "sound", "synth", "signal", "streaming", "buffer" ],
   "licenses": [ { "type": "MIT", "url": "http://raw.github.com/ZECTBynmo/node-core-audio/master/LICENSE" } ],
   "repository": { "type": "git", "url": "http://github.com/ZECTBynmo/node-core-audio.git" }
 }
