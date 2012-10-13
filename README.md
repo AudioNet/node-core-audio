@@ -12,9 +12,8 @@ npm install node-core-audio
 
 Disclaimer
 =====
-This extension is still under heavy development, and should be considered 
-pre-alpha. I wouldn't suggest you even try to use it, unless you're willing to roll up your
-sleeves from time to time.
+This extension is still under heavy development! Please contact me with any questions
+or issues.
 
 I am actively working on this, but if you want to see it happen faster, please 
 send me an email!
