@@ -48,8 +48,8 @@ Audio::AudioEngine::AudioEngine( Local<Function>& audioCallback ) :
 		ThrowException( Exception::TypeError(String::New("Error: No default input device")) );
 	}
 
-	// Stereo input
-	m_inputParameters.channelCount = 2;
+	// Mono input
+	m_inputParameters.channelCount = 1;	
 	m_inputParameters.sampleFormat = PA_SAMPLE_TYPE;
 	m_inputParameters.suggestedLatency = Pa_GetDeviceInfo( m_inputParameters.device )->defaultLowInputLatency;
 	m_inputParameters.hostApiSpecificStreamInfo = NULL;
@@ -363,8 +363,9 @@ void Audio::AudioEngine::restartStream( AudioEngine* engine ) {
 		audioCallbackSource,	// this is your callback function
 		this );					// This is a pointer that will be passed to your callback*/
 
-	if( err != paNoError ) 
-		ThrowException( Exception::TypeError(String::New("Failed to open audio stream")) );
+	if( err != paNoError ) {
+		ThrowException( Exception::TypeError(String::New("Failed to open audio stream :(")) );
+	}
 
 	err = Pa_StartStream( engine->m_pStream );
 
