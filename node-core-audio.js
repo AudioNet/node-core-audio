@@ -86,28 +86,21 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 		var processBuffer = self.processBuffer;
 			
 		// We need to deinterleave the inputbuffer
-		if( numChannels > 1 ) {
-			deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
-		} else {
-			processBuffer = inputBuffer;
-		}
+		deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
 
 		// Call through to all of our processing callbacks
 		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
 			processBuffer = self.processingCallbacks[iCallback]( numSamples, processBuffer );
 		} // end for each callback
 		
+		
 		if( typeof(self.audioStreamer) != "undefined" ) {
-			this.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
+			self.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
 		}
 		
 		var outputBuffer = self.outputBuffer;
 		
-		if( numChannels > 1 ) {
-			interleave( processBuffer, outputBuffer, numSamples, numChannels );
-		} else {
-			outputBuffer = processBuffer;
-		}
+		interleave( processBuffer, outputBuffer, numSamples, numChannels );
 		
 		self.didProcessAudio = true;
 		
@@ -123,7 +116,7 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 // Add a processing callback 
 AudioEngine.prototype.createAudioHub = function( port ) {
 	this.audioStreamer = require("AudioStreamer").createNewAudioStreamer( port );
-} // end AudioEngine.createAudioHub()
+} // end AudioEngine.createAudiohub()
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -213,6 +206,11 @@ AudioEngine.prototype.getNumOutputChannels = function() {
 //////////////////////////////////////////////////////////////////////////
 // Splits a 1d buffer into its channel components
 function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
+	if( numChannels < 2 ) {
+		outputBuffer[0] = inputBuffer;
+		return;
+	}
+
 	for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
 		for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
 			outputBuffer[iChannel][iSample] = inputBuffer[iSample + iChannel];
@@ -224,6 +222,11 @@ function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChanne
 //////////////////////////////////////////////////////////////////////////
 // Joins multidimensional array into single buffer
 function interleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
+	if( numChannels < 2 ) {
+		outputBuffer[0] = inputBuffer;
+		return;
+	}
+
 	for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
 		for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
 			outputBuffer[iSample + iChannel] = inputBuffer[iChannel][iSample];
