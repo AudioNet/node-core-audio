@@ -37,8 +37,9 @@ var dflt = function(a, b) { 													// Default a to b if a is undefined
 // Constructor
 function AudioEngine() {
 	var audioEngineImpl = require( "./build/Release/NodeCoreAudio" );
-
+	
 	this.audioEngine = audioEngineImpl.createAudioEngine( function() {} );
+	this.audioStreamer; 
 	
 	this.processingCallbacks = [];
 	this.uiUpdateCallbacks = [];
@@ -85,16 +86,28 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 		var processBuffer = self.processBuffer;
 			
 		// We need to deinterleave the inputbuffer
-		deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
+		if( numChannels > 1 ) {
+			deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
+		} else {
+			processBuffer = inputBuffer;
+		}
 
 		// Call through to all of our processing callbacks
 		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
 			processBuffer = self.processingCallbacks[iCallback]( numSamples, processBuffer );
 		} // end for each callback
 		
+		if( typeof(self.audioStreamer) != "undefined" ) {
+			this.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
+		}
+		
 		var outputBuffer = self.outputBuffer;
 		
-		interleave( processBuffer, outputBuffer, numSamples, numChannels );
+		if( numChannels > 1 ) {
+			interleave( processBuffer, outputBuffer, numSamples, numChannels );
+		} else {
+			outputBuffer = processBuffer;
+		}
 		
 		self.didProcessAudio = true;
 		
@@ -104,6 +117,13 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 	
 	return processAudio;
 } // end AudioEngine.getProcessAudio()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Add a processing callback 
+AudioEngine.prototype.createAudioHub = function( port ) {
+	this.audioStreamer = require("AudioStreamer").createNewAudioStreamer( port );
+} // end AudioEngine.createAudioHub()
 
 
 //////////////////////////////////////////////////////////////////////////
