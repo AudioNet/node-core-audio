@@ -1,6 +1,9 @@
 { "name": "node-core-audio",
   "version": "0.1.0",
   "author": "Mike Vegeto <michael.vegeto@gmail.com>",
+  "dependencies": {
+    "audio-streamer": ">= 0.1.0"
+  },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
   "engines": { "node": ">=0.8.0" },
