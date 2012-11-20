@@ -11,12 +11,6 @@
     <Filter Include="Source Files\hostapi">
       <UniqueIdentifier>{44fffc50-9224-4ea2-96d2-e25ac3134544}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\hostapi\ASIO">
-      <UniqueIdentifier>{ab94f0f3-d9b2-4564-a6f0-1bbbb6cdc907}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\hostapi\ASIO\ASIOSDK">
-      <UniqueIdentifier>{66bfddd8-5285-46b2-97fd-a32fc602cd0e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\hostapi\dsound">
       <UniqueIdentifier>{c8a31a28-b5e1-4724-af0f-1ca6dabd7403}</UniqueIdentifier>
     </Filter>
@@ -77,18 +71,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src\common\pa_trace.c">
       <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\hostapi\asio\pa_asio.cpp">
-      <Filter>Source Files\hostapi\ASIO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\hostapi\asio\ASIOSDK\common\asio.cpp">
-      <Filter>Source Files\hostapi\ASIO\ASIOSDK</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\hostapi\asio\ASIOSDK\host\asiodrivers.cpp">
-      <Filter>Source Files\hostapi\ASIO\ASIOSDK</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\hostapi\asio\ASIOSDK\host\pc\asiolist.cpp">
-      <Filter>Source Files\hostapi\ASIO\ASIOSDK</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\hostapi\dsound\pa_win_ds.c">
       <Filter>Source Files\hostapi\dsound</Filter>
