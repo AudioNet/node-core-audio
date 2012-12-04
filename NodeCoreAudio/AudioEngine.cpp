@@ -12,8 +12,6 @@
 #include <node_internals.h>
 #include <node_object_wrap.h>
 #include <pthread.h>
-#include <signal.h>
-#include <execinfo.h>
 using namespace v8;
 
 Persistent<Function> Audio::AudioEngine::constructor;
