@@ -28,7 +28,7 @@ send me an email!
 
 Basic Usage
 =====
-This package is setup as a "pull" system, meaning that the audio engine will 
+The basis usage is as a "pull" system, meaning that the audio engine will 
 call your processing function when it's ready to get new samples. "push" methods
 where you post audio to the sound card are available as well.
 
@@ -62,6 +62,9 @@ var output = [
 	[<some samples>], //left
 	[<some samples>]  //right
 ]
+audio.write(output);
+var input = audio.read();
+output[0] = output[1] = input[0]; //copy mono input to stereo
 audio.write(output);
 ```
 
