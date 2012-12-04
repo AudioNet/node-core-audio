@@ -1,6 +1,9 @@
 { "name": "node-core-audio",
   "version": "0.1.0",
   "author": "Mike Vegeto <michael.vegeto@gmail.com>",
+  "contributors": [
+    "MArc J. Schmidt <marc@kryn.org> (http://marcschmidt.name)"
+  ],
   "dependencies": {
     "audio-streamer": ">= 0.1.0"
   },
