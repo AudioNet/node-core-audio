@@ -18,10 +18,10 @@ setTimeout(function(){
     var output = [];
 
     var audioEngine = audioEngineImpl.createAudioEngine(
-        {inputChannels: 1},
+        {inputChannels: 2},
         function(input, lastInputOverflowed, lastOutputUnderflowed) {
-            output[0] = output[1] = input[0];
-            return output; //just copy input to output, so output = input
+            //output[0] = output[1] = input[0];
+            return input; //just copy input to output, so output = input
         }
     );
 

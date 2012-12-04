@@ -44,17 +44,20 @@ var coreAudio = require("node-core-audio").createNewAudioEngine();
 // Add an audio processing callback
 // Note: This function should return a buffer to the audio engine!
 // It is used for the output.
+var output = [];
 coreAudio.createAudioEngine(
 	{
-		inputChannels: 1
+		inputChannels: 1,
+		outputChannels: 2
 	},
 	function(input, lastInputOverflowed, lastOutputUnderflowed) {
-        return input; //just copy input to output, so output = input
+		output[0] = output[1] = input[0]; //copy mono input to stereo
+        return output; //returning an buffer means, writing to the soundcard
     }
 );
 
 //Alternatively, you can write/read manually.
-var audio = coreAudio.createAudioEngine();
+var audio = coreAudio.createAudioEngine({outputChannels: 2});
 var output = [
 	[<some samples>], //left
 	[<some samples>]  //right
@@ -79,14 +82,17 @@ The callback is only called if all buffers has been processed by the soundcard.
 
 Audio Engine Options
 =====
-* !NOTYET! sampleRate [default 44100]: Sample rate - number of samples per second in the audio stream
-* !NOTYET! sampleFormat [default paFloat32]: Bit depth - Number of bits used to represent sample values
+* sampleRate [default 44100]: Sample rate - number of samples per second in the audio stream
+* sampleFormat [default sampleFormatFloat32]: Bit depth - Number of bits used to represent sample values
+  formats are sampleFormatFloat32, sampleFormatInt32, sampleFormatInt24, sampleFormatInt16, sampleFormatInt8, sampleFormatUInt8.
 * framesPerBuffer [default 256]: Buffer length - Number of samples per buffer
-* !NOTYET! interlaced [default true]: Interlaced / Deinterlaced - determines whether samples are given to you as a two dimensional array (buffer[channel][sample]) or one buffer with samples from alternating channels
+* interleaved [default false]: Interleaved / Deinterleaved - determines whether samples are given to you as a two dimensional array (buffer[channel][sample]) (deinterleaved) or one buffer with samples from alternating channels (interleaved).
 * inputChannels [default 2]: Input channels - number of input channels
 * outputChannels [default 2]: Output channels - number of output channels
+* inputDevice [default to Pa_GetDefaultInputDevice]: Input device - id of the input device
+* outputDevice [default to Pa_GetDefaultOutputDevice]: Output device - id of the output device
 
-API (much more to come!)
+API
 =====
 ```javascript
 var coreAudio = require("node-core-audio");
@@ -107,37 +113,39 @@ var audio = coreAudio.createAudioEngine(
 // Returns whether the audio engine is active
 bool audio.isActive();
 
-// Updates the parameters and restarts the engine
+// Updates the parameters and restarts the engine. All keys from getOptions() are available.
 audio.setOptions({
 	inputChannels: 2
 });
 
-// Returns the sample rate of the audio engine
-int audio.getSampleRate();
+//Returns all parameters
+arraz audio.getOptions();
+=> {
+	inputChannels: int,
+	outputChannels: int,
+	inputDevice: int,
+	outputDevice: int,
+	sampleRate: int,
+	sampleFormat: int,
+	framesPerBuffer: int,
+	interleaved: bool
+};
 
-// Returns the index of the input audio device 
-int audio.getInputDeviceIndex();
+// Reads buffer of the input of the soundcard and returns as array.
+// Interlaced oder Deinterlaced, depends on your options. Default is interlaced.
+// notic: blocking i/o
+array audio.read();
 
-// Returns the index of the output audio device 
-int audio.getOutputDeviceIndex();
+// Writes the buffer to the output of the soundcard. Returns false if underflowed.
+// notic: blocking i/o
+bool audio.write(array input);
 
 // Returns the name of a given device 
-string audio.getDeviceName( inputDeviceIndex );
+string audio.getDeviceName( int inputDeviceIndex );
 
 // Returns the total number of audio devices
 int audio.getNumDevices();
 
-// Returns the number of input channels
-int audio.getNumInputChannels();
-
-// Returns the number of output channels
-int audio.getNumOutputChannels();
-
-// Sets the input audio device
-audio.setInputDevice( someDeviceId );
-
-// Sets the output audio device
-audio.setOutputDevice( someDeviceId );
 ```
 
 Known Issues / TODO
