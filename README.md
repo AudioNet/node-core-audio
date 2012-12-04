@@ -132,7 +132,7 @@ arraz audio.getOptions();
 };
 
 // Reads buffer of the input of the soundcard and returns as array.
-// Interlaced oder Deinterlaced, depends on your options. Default is interlaced.
+// Interlaced oder Deinterlaced, depends on your options. Default is deinterlaced array (buffer[channel][sample])
 // notic: blocking i/o
 array audio.read();
 
