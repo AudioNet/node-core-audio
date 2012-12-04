@@ -119,7 +119,7 @@ audio.setOptions({
 });
 
 //Returns all parameters
-arraz audio.getOptions();
+array audio.getOptions();
 => {
 	inputChannels: int,
 	outputChannels: int,
