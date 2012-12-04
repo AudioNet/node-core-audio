@@ -92,6 +92,7 @@ API (much more to come!)
 var coreAudio = require("node-core-audio");
 
 // Initialize the audio engine
+var output = [];
 var audio = coreAudio.createAudioEngine(
 	{
 		inputChannels: 1,
@@ -99,39 +100,44 @@ var audio = coreAudio.createAudioEngine(
 	},
 	function(input, lastInputOverflowed, lastOutputUnderflowed) {
 		output[0] = output[1] = output[2] = output[3] = output[4] = output[5] = input[0];
-        return input; //just copy input (mono) to each channel of our 5.1 output
+        return output; //just copy input (mono) to each channel of our 5.1 output
     }
 );
 
 // Returns whether the audio engine is active
-bool coreAudio.isActive();
+bool audio.isActive();
+
+// Updates the parameters and restarts the engine
+audio.setOptions({
+	inputChannels: 2
+});
 
 // Returns the sample rate of the audio engine
-int coreAudio.getSampleRate();
+int audio.getSampleRate();
 
 // Returns the index of the input audio device 
-intcoreAudio.getInputDeviceIndex();
+int audio.getInputDeviceIndex();
 
 // Returns the index of the output audio device 
-int coreAudio.getOutputDeviceIndex();
+int audio.getOutputDeviceIndex();
 
 // Returns the name of a given device 
-string coreAudio.getDeviceName( inputDeviceIndex );
+string audio.getDeviceName( inputDeviceIndex );
 
 // Returns the total number of audio devices
-int coreAudio.getNumDevices();
+int audio.getNumDevices();
 
 // Returns the number of input channels
-intcoreAudio.getNumInputChannels();
+int audio.getNumInputChannels();
 
 // Returns the number of output channels
-int coreAudio.getNumOutputChannels();
+int audio.getNumOutputChannels();
 
 // Sets the input audio device
-coreAudio.setInputDevice( someDeviceId );
+audio.setInputDevice( someDeviceId );
 
 // Sets the output audio device
-coreAudio.setOutputDevice( someDeviceId );
+audio.setOutputDevice( someDeviceId );
 ```
 
 Known Issues / TODO
