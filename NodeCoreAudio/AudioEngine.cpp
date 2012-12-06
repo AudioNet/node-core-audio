@@ -10,6 +10,7 @@
 #include <node_internals.h>
 #include <node_object_wrap.h>
 #include <pthread.h>
+#include <stdlib.h>
 using namespace v8;
 
 Persistent<Function> Audio::AudioEngine::constructor;
@@ -29,12 +30,12 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     framesPerBuffer = DEFAULT_FRAMES_PER_BUFFER;
     cachedOutputSamplesLength = 0;
     sampleFormat = 1;
-    interleaved = true;
+    interleaved = false;
 
     sampleRate = DEFAULT_SAMPLE_RATE;
 
-    cachedInputSamples = NULL;
-    cachedOutputSamples = NULL;
+    cachedInputSampleBlock = NULL;
+    cachedOutputSampleBlock = NULL;
 
     inputOverflowed = 0;
     outputUnderflowed = 0;
@@ -57,14 +58,16 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
 
     applyOptions(options);
 
-    /*
+    
     fprintf(stderr, "input :%d\n", inputDevice);
     fprintf(stderr, "output :%d\n", outputDevice);
     fprintf(stderr, "rate :%d\n", sampleRate);
     fprintf(stderr, "format :%d\n", sampleFormat);
+    fprintf(stderr, "size :%ld\n", sizeof(float));
     fprintf(stderr, "inputChannels :%d\n", inputChannels);
     fprintf(stderr, "outputChannels :%d\n", outputChannels);
-    */
+    fprintf(stderr, "interleaved :%d\n", interleaved);
+    
 
     pthread_mutex_init(&callerThreadSamplesAccess, NULL);
 
@@ -159,14 +162,14 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
     if (options->HasOwnProperty(String::New("framesPerBuffer")))
         framesPerBuffer = options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
 
-    if (options->HasOwnProperty(String::New("sameplFormat"))){
-        switch (options->Get(String::New("sameplFormat"))->ToInteger()->Value()){
-            case 1: sampleFormat = paFloat32; break;
-            case 2: sampleFormat = paInt32; break;
-            case 4: sampleFormat = paInt24; break;
-            case 8: sampleFormat = paInt16; break;
-            case 10: sampleFormat = paInt8; break;
-            case 20: sampleFormat = paUInt8; break;
+    if (options->HasOwnProperty(String::New("sampleFormat"))){
+        switch (options->Get(String::New("sampleFormat"))->ToInteger()->Value()){
+            case 1: sampleFormat = paFloat32; sampleSize = 4; break;
+            case 2: sampleFormat = paInt32; sampleSize = 4; break;
+            case 4: sampleFormat = paInt24; sampleSize = 3; break;
+            case 8: sampleFormat = paInt16; sampleSize = 2; break;
+            case 10: sampleFormat = paInt8; sampleSize = 1; break;
+            case 20: sampleFormat = paUInt8; sampleSize = 1; break;
         }
     }
 
@@ -187,10 +190,10 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
     inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultLowInputLatency;
     inputParameters.hostApiSpecificStreamInfo = NULL;
 
-    if (cachedInputSamples != NULL)
-        free(cachedInputSamples);
+    if (cachedInputSampleBlock != NULL)
+        free(cachedInputSampleBlock);
 
-    cachedInputSamples = (float *)malloc(sizeof(float) * framesPerBuffer * inputChannels);
+    cachedInputSampleBlock = (char *)malloc(framesPerBuffer * inputChannels * sampleSize);
 
     // Stereo output
     outputParameters.device = outputDevice;
@@ -199,10 +202,10 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
     outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
     outputParameters.hostApiSpecificStreamInfo = NULL;
 
-    if (cachedOutputSamples != NULL)
-        free(cachedOutputSamples);
+    if (cachedOutputSampleBlock != NULL)
+        free(cachedOutputSampleBlock);
 
-    cachedOutputSamples = (float *)malloc((sizeof(float) * framesPerBuffer) * outputChannels);
+    cachedOutputSampleBlock = (char *)malloc(framesPerBuffer * outputChannels * sampleSize);
 
     if (paStream != NULL && Pa_IsStreamActive(paStream))
         restartStream();
@@ -247,14 +250,18 @@ Handle<Array> Audio::AudioEngine::InputToArray(){
 
     Handle<Array> inputBuffer;
 
+    Handle<Number> sample;
+
     if (interleaved){
         inputBuffer = Array::New( inputChannels * framesPerBuffer );
 
         while(iSample < framesPerBuffer*inputChannels){
+
             inputBuffer->Set(
                 iSample,
-                v8::Number::New(cachedInputSamples[iSample])
+                getSample(iSample)
             );
+
             iSample++;
         }
 
@@ -272,7 +279,7 @@ Handle<Array> Audio::AudioEngine::InputToArray(){
 
             inputBuffer->Get(iSample%inputChannels)->ToObject()->Set(
                 iChannel,
-                v8::Number::New(cachedInputSamples[iSample])
+                getSample(iSample)
             );
 
             iSample++;
@@ -282,6 +289,66 @@ Handle<Array> Audio::AudioEngine::InputToArray(){
 
     return inputBuffer;
 } // end InputToArray
+
+/**
+ * Returns the samples recorded from the soundcard as v8 Number.
+ */
+Handle<Number> Audio::AudioEngine::getSample(int position){
+    HandleScope scope;
+
+    Handle<Number> sample;
+
+    switch (sampleFormat){
+        case paFloat32:
+            sample = Number::New(((float*)cachedInputSampleBlock)[position]); break;
+        case paInt32:
+            sample = Integer::New(((int*)cachedInputSampleBlock)[position]); break;
+        case paInt24:
+            sample = Integer::New(
+                (cachedInputSampleBlock[3*position + 0] << 16)
+              + (cachedInputSampleBlock[3*position + 1] << 8)
+              + (cachedInputSampleBlock[3*position + 2])
+            );
+            break;
+        case paInt16:
+            sample = Integer::New(((int16_t*)cachedInputSampleBlock)[position]); break;
+        default:
+            sample = Integer::New(cachedInputSampleBlock[position]*-1); break;
+    }
+
+    return sample;
+} // end getSample
+
+
+/**
+ * Sets a v8 sample value to a position for output.
+ */
+void Audio::AudioEngine::setSample(int position, Handle<Value> sample){
+
+    int temp;
+    switch (sampleFormat){
+        case paFloat32:
+            ((float *)cachedOutputSampleBlock)[position] = (float)sample->NumberValue();
+            break;
+        case paInt32:
+            ((int *)cachedOutputSampleBlock)[position] = (int)sample->NumberValue();
+            break;
+        case paInt24:
+
+            temp = (int)sample->NumberValue();
+            cachedOutputSampleBlock[3*position + 0] = temp >> 16;
+            cachedOutputSampleBlock[3*position + 1] = temp >> 8;
+            cachedOutputSampleBlock[3*position + 2] = temp;
+
+            break;
+        case paInt16:
+            ((int16_t *)cachedOutputSampleBlock)[position] = (int16_t)sample->NumberValue();
+            break;
+        default:
+            cachedOutputSampleBlock[position] = (char)sample->NumberValue();
+            break;
+    }
+} // end setSample
 
 
 /**
@@ -293,10 +360,13 @@ void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
 
     cachedOutputSamplesLength = 0;
 
+    //int *out = (int*)cachedOutputSampleBlock;
+
     if (interleaved){
 
         while(iSample < framesPerBuffer*outputChannels){
-            cachedOutputSamples[iSample] = (float)result->Get(iSample)->NumberValue();
+
+            setSample(iSample, result->Get(iSample));
             iSample++;
         }
 
@@ -316,8 +386,8 @@ void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
             if (item->IsArray()){
                 if (item->Length() > cachedOutputSamplesLength)
                     cachedOutputSamplesLength = item->Length();
-
-                cachedOutputSamples[iSample] = (float)item->Get(iChannel)->NumberValue();
+                
+                setSample(iSample, item->Get(iChannel));
             }
 
             iSample++;
@@ -339,7 +409,7 @@ void* Audio::AudioEngine::streamThread(void *pEngine){
 
     while(1){
 
-        err = Pa_ReadStream(engine->paStream, engine->cachedInputSamples, engine->framesPerBuffer);
+        err = Pa_ReadStream(engine->paStream, engine->cachedInputSampleBlock, engine->framesPerBuffer);
 
         engine->inputOverflowed = (err != paNoError);
 
@@ -348,7 +418,7 @@ void* Audio::AudioEngine::streamThread(void *pEngine){
         pthread_mutex_lock(&engine->callerThreadSamplesAccess); //wait, untill js call is done
 
         if (engine->cachedOutputSamplesLength > 0){
-            err = Pa_WriteStream(engine->paStream, engine->cachedOutputSamples, engine->cachedOutputSamplesLength);
+            err = Pa_WriteStream(engine->paStream, engine->cachedOutputSampleBlock, engine->cachedOutputSamplesLength);
             engine->outputUnderflowed = (err != paNoError);
             engine->cachedOutputSamplesLength = 0;
         }
@@ -375,13 +445,6 @@ void Audio::AudioEngine::Init(v8::Handle<v8::Object> target) {
     functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getOptions"), FunctionTemplate::New(Audio::AudioEngine::GetOptions)->GetFunction() );
     functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("write"), FunctionTemplate::New(Audio::AudioEngine::Write)->GetFunction() );
     functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("read"), FunctionTemplate::New(Audio::AudioEngine::Read)->GetFunction() );
-
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatFloat32"), Number::New(1) );
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatInt32"), Number::New(2) );
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatInt24"), Number::New(4) );
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatInt16"), Number::New(8) );
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatInt8"), Number::New(10) );
-    functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("sampleFormatUInt8"), Number::New(20) );
 
     constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
 } // end Init()
@@ -459,7 +522,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::Write( const v8::Arguments& args ) {
     Handle<Boolean> result = Boolean::New(false);
 
     if (engine->cachedOutputSamplesLength > 0){
-        if (!Pa_WriteStream(engine->paStream, engine->cachedOutputSamples, engine->cachedOutputSamplesLength))
+        if (!Pa_WriteStream(engine->paStream, engine->cachedOutputSampleBlock, engine->cachedOutputSamplesLength))
             result = Boolean::New(true);
         engine->cachedOutputSamplesLength = 0;
     }
@@ -476,7 +539,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::Read( const v8::Arguments& args ) {
 
     AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
-    Pa_ReadStream(engine->paStream, engine->cachedInputSamples, engine->framesPerBuffer);
+    Pa_ReadStream(engine->paStream, engine->cachedInputSampleBlock, engine->framesPerBuffer);
 
     Handle<Array> input = engine->InputToArray();
     

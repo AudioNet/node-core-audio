@@ -53,6 +53,8 @@ namespace Audio {
 
         void queueOutputBuffer(Handle<Array> result);
         Handle<Array> InputToArray();
+        Handle<Number> getSample(int position);
+        void setSample(int position, Handle<Value>);
 
         /**
          * The portaudio stream
@@ -91,7 +93,8 @@ namespace Audio {
             outputDevice,
             sampleRate,
             framesPerBuffer,
-            sampleFormat;
+            sampleFormat,
+            sampleSize;
         /**
          * Cached output buffer length, so that the streamThread
          * knows whether he should write the buffer to the soundcard or not.
@@ -111,8 +114,8 @@ namespace Audio {
         /**
          * The input/output buffer cached for the callCallback method.
          */
-        float  *cachedInputSamples,
-               *cachedOutputSamples; 
+        char  *cachedInputSampleBlock,
+              *cachedOutputSampleBlock;
 
     }; // end class AudioEngine
     

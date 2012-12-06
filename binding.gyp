@@ -8,7 +8,7 @@
 			],
 			'include_dirs': [
 				'<(module_root_dir)/NodeCoreAudio/',
-				'<(module_root_dir)/portaudio/include/'
+				'<(module_root_dir)/portaudio/'
 			],
 			"conditions" : [
 				[
