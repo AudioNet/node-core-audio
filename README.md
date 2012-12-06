@@ -6,6 +6,14 @@ Right now, it's basically a node.js binding for PortAudio.
 
 Installation
 =====
+
+On OSX/Linux you need portaudio libs installed.
+```
+	sudo apt-get intall portaudio
+	sudo port install portaudio
+	etc.
+```
+
 ```
 npm install node-core-audio
 ```
@@ -20,128 +28,135 @@ send me an email!
 
 Basic Usage
 =====
-This package is setup as a "pull" system, meaning that the audio engine will 
-call your processing function when it's ready to get new samples, as opposed
-to a "push" system, where you post audio to the sound card.
+The basis usage is as a "pull" system, meaning that the audio engine will 
+call your processing function when it's ready to get new samples. "push" methods
+where you post audio to the sound card are available as well.
 
 Below is the most basic use of the audio engine. We create a new instance of
 node-core-audio, and then give it our processing function. The audio engine
 will call the audio callback whenever it needs an output buffer to send to
 the sound card.
+
 ```javascript
 // Create a new instance of node-core-audio
 var coreAudio = require("node-core-audio").createNewAudioEngine();
 
 // Add an audio processing callback
-// Note: This function MUST return a buffer to the audio engine! If 
-// not, your application will throw an exception.
-coreAudio.addAudioCallback( function( numSamples, inputBuffer ) {
-	console.log( "sweet" );
-	return inputBuffer;
-});
+// Note: This function should return a buffer to the audio engine!
+// It is used for the output.
+var output = [];
+coreAudio.createAudioEngine(
+	{
+		inputChannels: 1,
+		outputChannels: 2
+	},
+	function(input, lastInputOverflowed, lastOutputUnderflowed) {
+		output[0] = output[1] = input[0]; //copy mono input to stereo
+        return output; //returning an buffer means, writing to the soundcard
+    }
+);
+
+//Alternatively, you can write/read manually.
+var audio = coreAudio.createAudioEngine({outputChannels: 2});
+var output = [
+	[<some samples>], //left
+	[<some samples>]  //right
+]
+audio.write(output);
+var input = audio.read();
+output[0] = output[1] = input[0]; //copy mono input to stereo
+audio.write(output);
 ```
 
 Important! Processing Thread
 =====
 When you are writing code inside of your audio callback, you are operating on
-the processing thread of the application. Any large allocations will cause the
-program to crash, and you will get no error whatsoever. This is a bug, and I
-hope to fix it soon.
-
-DO NOT DO THESE INSIDE THE AUDIO CALLBACK (or anything like them):
-```javascript
-var array = [];
-var array = new Array();		// Allocating for arrays is not okay
-var object = {};				// Allocating for objects is not okay
-var callback = function(){};	// Allocating for functions is not okay
-socket.emit(...);				// Doing socket stuff is not okay (because it causes object/array allocations)
-```
+the processing thread of the application. The callback runs at very high priority,
+depending on framesPerBuffer (default is 256, the lower the lower is the delay between
+each call). Expensive operations inside this function will cause a lack in the output.
+You see with lastInputOverflowed and lastOutputUnderflowed whether your function is
+too slow or not. (value of 0 means everything is fine)
 
 The basic principle is that you should have everything ready to go before you enter
 the processing function. Buffers, objects, and functions should be created in a 
 constructor or static function outside of the audio callback.
 
-Simple allocations and assignments are okay (you CAN do these):
-```javascript
-// Simple allocation
-var someValue = 10;	
+The callback is only called if all buffers has been processed by the soundcard.
 
-// Assignment of whole buffers
-preAllocatedBuffer = inputBuffer;
-
-// Sample by sample processing
-for( var iSample = 0; iSample < numSamples; ++iSample ) {
-	preAllocatedBuffer[iSample] = numSamples / iSample;
-}
-```
-
-UI Update callbacks
+Audio Engine Options
 =====
-If you would like to get a callback after processing has completed (not on the audio thread, so complex allocation is safe), add a UI callback.
+* sampleRate [default 44100]: Sample rate - number of samples per second in the audio stream
+* sampleFormat [default sampleFormatFloat32]: Bit depth - Number of bits used to represent sample values
+  formats are sampleFormatFloat32, sampleFormatInt32, sampleFormatInt24, sampleFormatInt16, sampleFormatInt8, sampleFormatUInt8.
+* framesPerBuffer [default 256]: Buffer length - Number of samples per buffer
+* interleaved [default false]: Interleaved / Deinterleaved - determines whether samples are given to you as a two dimensional array (buffer[channel][sample]) (deinterleaved) or one buffer with samples from alternating channels (interleaved).
+* inputChannels [default 2]: Input channels - number of input channels
+* outputChannels [default 2]: Output channels - number of output channels
+* inputDevice [default to Pa_GetDefaultInputDevice]: Input device - id of the input device
+* outputDevice [default to Pa_GetDefaultOutputDevice]: Output device - id of the output device
 
-```javascript
-coreAudio.addUpdateCallback( ...some callback function... );
-```
-
-Audio Engine Options (not implimented as of version 0.0.7)
-=====
-* Sample rate - number of samples per second in the audio stream
-* Bit depth - Number of bits used to represent sample values
-* Buffer length - Number of samples per buffer
-* Interlaced / Deinterlaced - determines whether samples are given to you as a two dimensional array (buffer[channel][sample]) or one buffer with samples from alternating channels
-
-API (much more to come!)
+API
 =====
 ```javascript
-var coreAudio = require("node-core-audio").createNewAudioEngine();
+var coreAudio = require("node-core-audio");
 
-// Adds an audio callback to the audio engine (MUST RETURN AN OUTPUT BUFFER)
-coreAudio.addAudioCallback( function(numSamples, inputBuffer){ return inputBuffer; } );
-
-// Adds a UI update callback off of the audio thread
-coreAudio.addUpdateCallback( function(){console.log("sweet");} );
+// Initialize the audio engine
+var output = [];
+var audio = coreAudio.createAudioEngine(
+	{
+		inputChannels: 1,
+		outputChannels: 6
+	},
+	function(input, lastInputOverflowed, lastOutputUnderflowed) {
+		output[0] = output[1] = output[2] = output[3] = output[4] = output[5] = input[0];
+        return output; //just copy input (mono) to each channel of our 5.1 output
+    }
+);
 
 // Returns whether the audio engine is active
-var isActive = coreAudio.isActive();
+bool audio.isActive();
 
-// Returns the sample rate of the audio engine
-var sampleRate = coreAudio.getSampleRate();
+// Updates the parameters and restarts the engine. All keys from getOptions() are available.
+audio.setOptions({
+	inputChannels: 2
+});
 
-// Returns the index of the input audio device 
-var inputDeviceIndex = coreAudio.getInputDeviceIndex();
+//Returns all parameters
+array audio.getOptions();
+=> {
+	inputChannels: int,
+	outputChannels: int,
+	inputDevice: int,
+	outputDevice: int,
+	sampleRate: int,
+	sampleFormat: int,
+	framesPerBuffer: int,
+	interleaved: bool
+};
 
-// Returns the index of the output audio device 
-var outputDeviceIndex = coreAudio.getOutputDeviceIndex();
+// Reads buffer of the input of the soundcard and returns as array.
+// Interlaced oder Deinterlaced, depends on your options. Default is deinterlaced array (buffer[channel][sample])
+// notic: blocking i/o
+array audio.read();
+
+// Writes the buffer to the output of the soundcard. Returns false if underflowed.
+// notic: blocking i/o
+bool audio.write(array input);
 
 // Returns the name of a given device 
-var inputDeviceName = coreAudio.getDeviceName( inputDeviceIndex );
+string audio.getDeviceName( int inputDeviceIndex );
 
 // Returns the total number of audio devices
-var numDevices = coreAudio.getNumDevices();
+int audio.getNumDevices();
 
-// Returns the number of input channels
-var numChannels = coreAudio.getNumInputChannels();
-
-// Returns the number of output channels
-var numChannels = coreAudio.getNumOutputChannels();
-
-// Sets the input audio device
-coreAudio.setInputDevice( someDeviceId );
-
-// Sets the output audio device
-coreAudio.setOutputDevice( someDeviceId );
 ```
 
 Known Issues / TODO
 =====
 
-* Create thread for Javascript/UI - allocations from javascript shouldn't cause crashes
 * Add FFTW to C++ extension, so you can get fast FFT's from javascript, and also register for the FFT of incoming audio, rather than the audio itself
 * Add support for streaming audio over sockets
 
-License - MIT
+License
 =====
-Copyright (c) 2012, Mike Vegeto (michael.vegeto@gmail.com)
-All rights reserved.
-
-See LICENSE file
+MIT - See LICENSE file.

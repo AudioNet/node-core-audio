@@ -8,14 +8,13 @@
 			],
 			'include_dirs': [
 				'<(module_root_dir)/NodeCoreAudio/',
-				'<(module_root_dir)/portaudio/include/'
+				'<(module_root_dir)/portaudio/'
 			],
 			"conditions" : [
 				[
-					'OS=="linux"', {
+					'OS!="win"', {
 						"libraries" : [
-							'-lpng',
-							'-lz'
+							'-lportaudio'
 						],
 						'cflags!': [ '-fno-exceptions' ],
 						'cflags_cc!': [ '-fno-exceptions' ]
@@ -30,14 +29,7 @@
 					}
 				]
 			],
-			'copies':[
-				{	
-					'destination': '<(module_root_dir)/build/Release/',
-					'files': [
-						'<(module_root_dir)/gyp/lib/portaudio_x86.dll'
-					]
-				}
-			]
+			
 		}
 	]
 }
