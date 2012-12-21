@@ -1,3 +1,5 @@
+This module is in transition. The master branch should work for mac and linux computers, and the v0.1.0_windows branch should work for windows. 
+
 Node Core Audio
 ==================
 This is a C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionality
