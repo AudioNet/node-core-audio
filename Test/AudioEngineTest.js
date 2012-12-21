@@ -1,41 +1,45 @@
 // Set this to something like 15000 to give yourself some time to attach to the node.exe process from a debugger
 var TIME_TO_ATTACH_DEBUGGER_MS = 0;
 
-setTimeout( function() {
+setTimeout(function(){
 
-	var util = require( "util" );
+    var util = require( "util" );
 
-	process.on('uncaughtException', function (err) {
-	  console.error(err);
-	  console.log("Node NOT Exiting...");
-	});
+    process.on('uncaughtException', function (err) {
+      console.error(err);
+      console.log("Node NOT Exiting...");
+    });
 
-	var audioEngineImpl = require( "NodeCoreAudio" );
+    var audioEngineImpl = require( "../build/Release/NodeCoreAudio" );
 
-	console.log( audioEngineImpl );
+    console.log( audioEngineImpl );
 
-	var audioEngine = audioEngineImpl.createAudioEngine( function(uSampleFrames, inputBuffer, outputBuffer) {
-		console.log( "aw shit, we got some samples" );
-	});
+    var buffer  = false;
+    var output = [];
 
-	// Make sure the audio engine is still active
-	if( audioEngine.isActive() ) console.log( "active" );
-	else console.log( "not active" );
+    var audioEngine = audioEngineImpl.createAudioEngine(
+        {inputChannels: 2},
+        function(input, lastInputOverflowed, lastOutputUnderflowed) {
+            //output[0] = output[1] = input[0];
+            return input; //just copy input to output, so output = input
+        }
+    );
 
-	// Declare our processing function
-	function processAudio( numSamples, incomingSamples ) {
-		// Write a saw wave to the buffer
-		// It will have f0 = sampleRate/numSamples
-		for( var iSample = 0; iSample < numSamples; ++iSample ) {
-			incomingSamples[iSample] = iSample/numSamples;
-		}
-		
-		return incomingSamples;
-	}
 
-	// Start polling the audio engine for data as fast as we can
-	setInterval( function() {
-		audioEngine.processIfNewData( processAudio );
-	}, 0 );
+    // Make sure the audio engine is still active
+    if( audioEngine.isActive() ) console.log( "active" );
+    else console.log( "not active" );
 
-}, TIME_TO_ATTACH_DEBUGGER );
+    var c = 0;
+    setInterval(function(){
+        if( audioEngine.isActive() ) c++;
+
+    }, 1000 );
+
+    setTimeout(function(){
+        audioEngine.setOptions({
+            framesPerBuffer: 5000
+        });
+    }, 5000);
+
+}, TIME_TO_ATTACH_DEBUGGER_MS);
