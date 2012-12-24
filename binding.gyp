@@ -25,7 +25,14 @@
 						"include_dirs" : [ "gyp/include" ],
 						"libraries" : [
 							'<(module_root_dir)/gyp/lib/portaudio_x86.lib'
-						]
+						],'copies': [
+				            {
+				              'destination': '<(module_root_dir)/build/Release/',
+				              'files': [
+				                '<(module_root_dir)/gyp/lib/portaudio_x86.lib',
+				              ]
+				            }
+				        ]
 					}
 				]
 			],
