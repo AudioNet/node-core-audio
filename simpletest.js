@@ -1,7 +1,4 @@
-var coreAudio = require("node-core-audio");
-
-// Initialize the audio engine
-var output = [];
+var coreAudio = require("./node-core-audio");
 
 var options = {
 	inputChannels: 1,
@@ -12,4 +9,6 @@ var audioCallback = function() {
 	console.log("sweet");
 }
 
-var engine = coreAudio.createNewAudioEngine( options, audioCallback, true );
+setTimeout( function(){
+	var engine = coreAudio.createNewAudioEngine( options, audioCallback, true );
+}, 0);
