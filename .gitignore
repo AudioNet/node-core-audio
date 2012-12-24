@@ -1,6 +1,7 @@
 Debug/
 Release/
 ipch/
+Test/
 NodeCoreAudio.suo
 NodeCoreAudio.opensdf
 NodeCoreAudio.sdf
