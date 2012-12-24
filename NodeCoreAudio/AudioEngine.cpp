@@ -7,9 +7,9 @@
 #include "AudioEngine.h"
 #include "portaudio.h"
 #include <v8.h>
+#include <uv.h>
 #include <node_internals.h>
 #include <node_object_wrap.h>
-#include <pthread.h>
 #include <stdlib.h>
 using namespace v8;
 
@@ -69,7 +69,7 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     fprintf(stderr, "interleaved :%d\n", interleaved);
     
 
-    pthread_mutex_init(&callerThreadSamplesAccess, NULL);
+    uv_mutex_init( &callerThreadSamplesAccess );
 
     // Open an audio I/O stream. 
     openStreamErr = Pa_OpenStream(  &paStream,
@@ -91,7 +91,7 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
     if (withThread)
-        pthread_create(&ptStreamThread, NULL, Audio::AudioEngine::streamThread, this);
+        uv_thread_create(&ptStreamThread, NULL, Audio::AudioEngine::streamThread);
 
 } // end Constructor
 
@@ -216,10 +216,10 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
 /**
  * Prepares the input/output buffers and calls the javascript callback.
  */
-int Audio::AudioEngine::callCallback(eio_req *req){
+void Audio::AudioEngine::callCallback(uv_async_t* handle, int status){
     HandleScope scope;
 
-    AudioEngine* engine = ((AudioEngine*)req->data);
+	AudioEngine* engine = ((AudioEngine*)handle->data);
 
     Handle<Array> inputBuffer = engine->InputToArray();
 
@@ -235,9 +235,7 @@ int Audio::AudioEngine::callCallback(eio_req *req){
         engine->queueOutputBuffer(result);
     }
     
-    pthread_mutex_unlock(&engine->callerThreadSamplesAccess);
-    
-    return 0;
+    uv_mutex_unlock(&engine->callerThreadSamplesAccess);
 } // end callCallback
 
 
@@ -413,9 +411,14 @@ void* Audio::AudioEngine::streamThread(void *pEngine){
 
         engine->inputOverflowed = (err != paNoError);
 
-        pthread_mutex_trylock(&engine->callerThreadSamplesAccess);
-        eio_nop(EIO_PRI_DEFAULT, callCallback, pEngine); //call into the v8 thread
-        pthread_mutex_lock(&engine->callerThreadSamplesAccess); //wait, untill js call is done
+        uv_mutex_trylock(&engine->callerThreadSamplesAccess);
+
+		uv_async_t* async;
+		async->async_cb= callCallback;
+		async->data = engine;
+
+        uv_async_send(async); //call into the v8 thread
+        uv_mutex_lock(&engine->callerThreadSamplesAccess); //wait, untill js call is done
 
         if (engine->cachedOutputSamplesLength > 0){
             err = Pa_WriteStream(engine->paStream, engine->cachedOutputSampleBlock, engine->cachedOutputSamplesLength);

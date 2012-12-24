@@ -44,7 +44,7 @@ namespace Audio {
         static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );
 
         static void* streamThread(void *p);
-        static int callCallback(eio_req *req);
+        static void callCallback(uv_async_t* handle, int status);
 
         void applyOptions( Local<Object> options );
 
@@ -70,14 +70,14 @@ namespace Audio {
         /**
          * The id of the streamThread thread.
          */
-        pthread_t ptStreamThread;
+        uv_thread_t ptStreamThread;
 
         /**
          * The mutex that detects whether the v8 javascript callback function is done or not.
          * Since the v8 callback and the streamThread are in different threads, this is needed
          * to be synchronized.
          */
-        pthread_mutex_t callerThreadSamplesAccess;
+        uv_mutex_t callerThreadSamplesAccess;
 
         /**
          * Stores the v8 javascript callback function.
