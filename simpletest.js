@@ -15,13 +15,16 @@ var options = {
 	outputChannels: 2
 }
 
-var audioCallback = function() {
+var audioCallback = function( numSamples, inputBuffer ) {
 	console.log("sweet");
+	return inputBuffer;
 }
 
 console.log( options );
 
 setTimeout( function(){
 	console.log("About to create the audio engine" );
-	var engine = coreAudio.createNewAudioEngine( options, audioCallback, true );
+	var engine = coreAudio.createNewAudioEngine();
+
+	engine.addAudioCallback( audioCallback );
 }, 0);
