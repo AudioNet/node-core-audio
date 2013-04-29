@@ -33,7 +33,7 @@ namespace Audio {
 		Isolate* GetIsolate() { return m_pIsolate; }
 		Locker* GetLocker() { return m_pLocker; }
 
-        ~AudioEngine();
+        ~AudioEngine();		//!< OOL Destructor
 
     private:
         static v8::Persistent<v8::Function> constructor;                
@@ -52,13 +52,16 @@ namespace Audio {
         static v8::Handle<v8::Value> SetOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
         static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );	//!< Gets options
 
-        static void* streamThread(void *p);
 		static void callCallback(uv_work_t* handle, int status);
         static void afterWork(uv_work_t* handle, int status) {};
 
-        void applyOptions( Local<Object> options );
+        void applyOptions( Local<Object> options );			//!< Sets the given options and restarts the audio stream if necessary
+        void wrapObject( v8::Handle<v8::Object> object );	//!< Wraps a handle into an object
 
-        void wrapObject( v8::Handle<v8::Object> object );
+		//! Run the main blocking audio loop
+		static void* runAudioLoop( void *p );
+
+		//! Closes and reopens the PortAudio stream
         void restartStream();
 
         void queueOutputBuffer(Handle<Array> result);

@@ -97,7 +97,7 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     if( startStreamErr != paNoError ) 
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
-    uv_thread_create( &ptStreamThread, (void (__cdecl *)(void *))Audio::AudioEngine::streamThread, (void*)this );
+    uv_thread_create( &ptStreamThread, (void (__cdecl *)(void *))Audio::AudioEngine::runAudioLoop, (void*)this );
 
 	//uv_thread_join( &ptStreamThread );
 
@@ -153,12 +153,10 @@ v8::Handle<v8::Value> Audio::AudioEngine::SetOptions( const v8::Arguments& args 
 } // end AudioEngine::SetOptions()x
 
 
-/**
- * Applys the options to the parameter objects and restarts the stream.
- */
-void Audio::AudioEngine::applyOptions( Local<Object> options ){
-
-    if( options->HasOwnProperty(String::New("inputChannels")) )
+//////////////////////////////////////////////////////////////////////////////
+/*! Sets the given options and restarts the audio stream if necessary */
+void Audio::AudioEngine::applyOptions( Local<Object> options ) {
+	if( options->HasOwnProperty(String::New("inputChannels")) )
         m_uInputChannels = options->Get(String::New("inputChannels"))->ToInteger()->Value();
 
     if( options->HasOwnProperty(String::New("outputChannels")) )
@@ -214,24 +212,17 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
 
     if (m_pPaStream != NULL && Pa_IsStreamActive(m_pPaStream))
         restartStream();
-
-} // end applyOptions
+} // end AudioEngine::applyOptions()
 
 
 /**
  * Prepares the input/output buffers and calls the javascript callback.
  */
 void Audio::AudioEngine::callCallback(uv_work_t* request, int status) {
-	//AudioEngine* engine = reinterpret_cast<AudioEngine*>(handle->data);
+
 	AudioEngine *engine = (AudioEngine*)request->data;
 	
 	engine->GetIsolate()->Enter();
-// 	engine->GetContext()->Enter();
-
-// 	auto lockerr = engine->GetLocker();
-
-	//lockerr = new Locker( engine->GetIsolate() );
-    //HandleScope scope;
 	
     engine->getInputBuffer();
 	
@@ -248,7 +239,6 @@ void Audio::AudioEngine::callCallback(uv_work_t* request, int status) {
     }
 	
  	engine->GetIsolate()->Exit();
-// 	engine->GetContext()->Exit();
 
     uv_mutex_unlock(&engine->m_mutex);
 	
@@ -367,8 +357,6 @@ void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
 
     m_uNumCachedOutputSamples = 0;
 
-    //int *out = (int*)cachedOutputSampleBlock;
-
     if (m_bInterleaved){
 
         while(iSample < m_uSamplesPerBuffer*m_uOutputChannels){
@@ -409,43 +397,32 @@ void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
  * The main thread that writes/reads the buffer from the soundcard stream.
  * If the user doesn't apply a javascript callback, this thread won't start.
  */
-void* Audio::AudioEngine::streamThread(void *pEngine){
+void* Audio::AudioEngine::runAudioLoop( void* data ){
 
-    AudioEngine* engine = ((AudioEngine*)pEngine);
-    PaError err;
+    AudioEngine* pEngine = (AudioEngine*)data;
+    PaError error;
 
-	assert( engine->m_pPaStream );
+	assert( pEngine->m_pPaStream );
 
-    while(1){
+    while( true ) {
 
-        err = Pa_ReadStream(engine->m_pPaStream, engine->m_cachedInputSampleBlock, engine->m_uSamplesPerBuffer);
+        error = Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
 
-        engine->m_bInputOverflowed = (err != paNoError);
-
-        //uv_mutex_trylock(&engine->callerThreadSamplesAccess);
+        pEngine->m_bInputOverflowed = (error != paNoError);
 
 		uv_work_t* request = new uv_work_t;
-		request->work_cb= (uv_work_cb)callCallback;
-		request->data = engine;
+		request->data = pEngine;
 
-		//callCallback( request, 0 );
+		uv_mutex_trylock( &pEngine->m_mutex );
 
-// 		uv_thread_create( &engine->jsAudioThread, (void (__cdecl *)(void *))Audio::AudioEngine::callCallback, (void*)engine );
-// 
-// 		uv_thread_join( &engine->jsAudioThread );
-
-		uv_mutex_trylock( &engine->m_mutex );
-
-        //uv_async_send(async); //call into the v8 thread
- 		//uv_queue_work(uv_default_loop(), request, (uv_work_cb)callCallback, (uv_after_work_cb)afterWork );
 		int statusInt = 0;
 		callCallback( request, statusInt );
-        uv_mutex_lock(&engine->m_mutex); //wait, until js call is done
+        uv_mutex_lock( &pEngine->m_mutex ); //wait, until js call is done
 
-        if (engine->m_uNumCachedOutputSamples > 0){
-            err = Pa_WriteStream(engine->m_pPaStream, engine->m_cachedOutputSampleBlock, engine->m_uNumCachedOutputSamples);
-            engine->m_bOutputUnderflowed = (err != paNoError);
-            engine->m_uNumCachedOutputSamples = 0;
+        if( pEngine->m_uNumCachedOutputSamples > 0 ) {
+            error = Pa_WriteStream( pEngine->m_pPaStream, pEngine->m_cachedOutputSampleBlock, pEngine->m_uNumCachedOutputSamples );
+            pEngine->m_bOutputUnderflowed = (error != paNoError);
+            pEngine->m_uNumCachedOutputSamples = 0;
         }
     }
 } // end streamThread
@@ -612,17 +589,25 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetNumDevices( const v8::Arguments& ar
 } // end AudioEngine::GetNumDevices()
 
 
-/**
- * Stops and restarts our audio stream.
- */
+//////////////////////////////////////////////////////////////////////////////
+/*! Closes and reopens the PortAudio stream */
 void Audio::AudioEngine::restartStream() {
-    Pa_StopStream( m_pPaStream );
-    Pa_CloseStream( m_pPaStream );
+	PaError error;
 
-    PaError err;
+	// Stop the audio stream
+	error = Pa_StopStream( m_pPaStream );
+	
+	if( error != paNoError )
+		ThrowException( Exception::TypeError(String::New("Failed to stop audio stream")) );
 
-    // Open an audio I/O stream. 
-    err = Pa_OpenStream(  &m_pPaStream,
+	// Close the audio stream
+    error = Pa_CloseStream( m_pPaStream );
+
+	if( error != paNoError )
+		ThrowException( Exception::TypeError(String::New("Failed to close audio stream")) );
+
+	// Open an audio stream. 
+	error = Pa_OpenStream(  &m_pPaStream,
         &m_inputParams,
         &m_outputParams,
         m_uSampleRate,
@@ -631,32 +616,32 @@ void Audio::AudioEngine::restartStream() {
         NULL,
         NULL );
 
-    if( err != paNoError ) {
+    if( error != paNoError ) {
         ThrowException( Exception::TypeError(String::New("Failed to open audio stream :(")) );
     }
 
-    err = Pa_StartStream( m_pPaStream );
+	// Start the audio stream
+    error = Pa_StartStream( m_pPaStream );
 
-    if( err != paNoError ) 
+    if( error != paNoError ) 
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
-} // end restartStream()
+} // end AudioEngine::restartStream()
 
 
-/**
- * Wraps a handle into an object.
- */
+//////////////////////////////////////////////////////////////////////////////
+/*! Wraps a handle into an object */
 void Audio::AudioEngine::wrapObject( v8::Handle<v8::Object> object ) {
-    ObjectWrap::Wrap( object );
-} // end wrapObject()
+	ObjectWrap::Wrap( object );
+} // end AudioEngine::wrapObject()
 
 
-/**
- * Destructor.
- */
+//////////////////////////////////////////////////////////////////////////////
+/*! OOL Destructor */
 Audio::AudioEngine::~AudioEngine() {
-    PaError err = Pa_Terminate();
-    if( err != paNoError )
-        fprintf( stderr, "PortAudio error: %s\n", Pa_GetErrorText( err ) );
+	// Kill PortAudio
+	PaError err = Pa_Terminate();
 
-} // end ~AudioEngine()
+	if( err != paNoError )
+		fprintf( stderr, "PortAudio error: %s\n", Pa_GetErrorText( err ) );
+} // end AudioEngine::~AudioEngine()
