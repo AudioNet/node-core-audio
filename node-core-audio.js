@@ -65,18 +65,31 @@ function AudioEngine() {
 	}
 	
 	// Start polling the audio engine for data as fast as we can	
-	var self = this;
+	var _this = this;
 	setInterval( function() {	
-		self.didProcessAudio = false;
+		_this.didProcessAudio = false;
 		
 		// Try to process audio
-		self.audioEngine.processIfNewData( self.getProcessAudio() );
-		
-		// If we processed some audio, call our UI updates
-		if( self.didProcessAudio ) {
-			for( var iUpdate=0; iUpdate < self.uiUpdateCallbacks.length; ++iUpdate ) {
-				self.uiUpdateCallbacks[iUpdate]();
+		var input = _this.audioEngine.read();
+
+		/*
+		for( var iChannel=0; iChannel<input.length; ++iChannel ) {
+			for( var iSample=0; iSample<input[iChannel].length; ++iSample ) {
+				input[iChannel][iSample] = iSample;
 			}
+		}
+		*/
+
+		var outputBuffer = _this.getProcessAudio()( input[0].length, input );
+
+		if( outputBuffer === undefined )
+			console.log( "Audio processing function didn't return an output buffer" );
+
+		_this.audioEngine.write( outputBuffer );
+		
+		// Call our UI updates now that all the DSP work has been done
+		for( var iUpdate=0; iUpdate < _this.uiUpdateCallbacks.length; ++iUpdate ) {
+			_this.uiUpdateCallbacks[iUpdate]();
 		}
 	}, 0 );
 } // end AudioEngine();
@@ -84,13 +97,15 @@ function AudioEngine() {
 
 //////////////////////////////////////////////////////////////////////////
 // Main audio processing function
-AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
+AudioEngine.prototype.getProcessAudio = function() {
 	var self = this;
 
 	var options = this.audioEngine.getOptions(),
 		numChannels = options.inputChannels;
 	
-	var processAudio = function( numSamples, inputBuffer ) {		
+	var processAudio = function( numSamples, inputBuffer ) {	
+		console.log( "processing with " + self.processingCallbacks.length + " callbacks" );
+
 		// If we don't have any processing callbacks, just get out
 		if( self.processingCallbacks.length == 0 )
 			return inputBuffer;
@@ -109,6 +124,8 @@ AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 		if( typeof(self.audioStreamer) != "undefined" ) {
 			self.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
 		}
+
+		self.outputBuffer = processBuffer;
 		
 		var outputBuffer = self.outputBuffer;
 		
