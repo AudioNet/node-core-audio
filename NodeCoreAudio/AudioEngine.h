@@ -1,6 +1,8 @@
-/**
- * AudioEngine.h: Core audio functionality
- */
+//////////////////////////////////////////////////////////////////////////////
+//
+// AudioEngine.cpp: Core audio functionality
+// 
+//////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 #include "portaudio.h"
@@ -16,9 +18,8 @@ using namespace v8; using namespace std;
 
 namespace Audio {
 
-    /**
-     * Core audio functionality
-     */
+	//////////////////////////////////////////////////////////////////////////
+	//! Core audio functionality
     class AudioEngine : public node::ObjectWrap {
     public:
 
@@ -26,6 +27,10 @@ namespace Audio {
 
         static void Init(v8::Handle<v8::Object> target);
         static v8::Handle<v8::Value> NewInstance(const v8::Arguments& args);
+
+		Persistent<Context> GetContext() { return m_v8Context; }
+		Isolate* GetIsolate() { return m_pIsolate; }
+		Locker* GetLocker() { return m_pLocker; }
 
         ~AudioEngine();
 
@@ -44,7 +49,8 @@ namespace Audio {
         static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );
 
         static void* streamThread(void *p);
-        static void callCallback(uv_async_t* handle, int status);
+		static void callCallback(uv_work_t* handle, int status);
+        static void afterWork(uv_work_t* handle, int status) {};
 
         void applyOptions( Local<Object> options );
 
@@ -52,25 +58,18 @@ namespace Audio {
         void restartStream();
 
         void queueOutputBuffer(Handle<Array> result);
-        Handle<Array> InputToArray();
+        Handle<Array> getInputBuffer();
         Handle<Number> getSample(int position);
         void setSample(int position, Handle<Value>);
 
-        /**
-         * The portaudio stream
-         */
-        PaStream *paStream;
-
-        /**
-         * Parameter objects for the portaudio engine.
-         */
-        PaStreamParameters inputParameters,
+        PaStream *paStream;						//!< The PortAudio stream object
+        PaStreamParameters inputParameters,		//!< PortAudio stream parameters
                            outputParameters;
 
-        /**
-         * The id of the streamThread thread.
-         */
-        uv_thread_t ptStreamThread;
+		Handle<Array> inputBuffer;				//!< Our pre-allocated input buffer
+
+		uv_thread_t ptStreamThread;				//!< Our stream thread
+        uv_thread_t jsAudioThread;				//!< Our JavaScript Audio thread
 
         /**
          * The mutex that detects whether the v8 javascript callback function is done or not.
@@ -116,6 +115,10 @@ namespace Audio {
          */
         char  *cachedInputSampleBlock,
               *cachedOutputSampleBlock;
+
+		Persistent<Context> m_v8Context;
+		Isolate* m_pIsolate;
+		Locker* m_pLocker;
 
     }; // end class AudioEngine
     
