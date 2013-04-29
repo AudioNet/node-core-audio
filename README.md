@@ -1,4 +1,6 @@
-This module is in transition. The master branch should work for mac and linux computers, and the v0.1.0_windows branch should work for windows. 
+This module is in transition. The master branch might work for mac and linux computers, and the v0.1.0_windows branch should work for windows. 
+
+I'm currently working on the "mutex" branch
 
 Node Core Audio
 ==================
