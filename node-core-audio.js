@@ -36,10 +36,20 @@ var dflt = function(a, b) { 													// Default a to b if a is undefined
 //////////////////////////////////////////////////////////////////////////
 // Constructor
 function AudioEngine() {
-	var audioEngineImpl = require( "./build/Release/NodeCoreAudio" );
+	var audioEngineImpl = require( __dirname + "/build/Debug/NodeCoreAudio" );
+
+	var settings = {
+		inputChannels: 2,
+		outputChannels: 2
+	};
+
+	var callback = function(input, lastInputOverflowed, lastOutputUnderflowed) {
+	//	output[0] = output[1] = output[2] = output[3] = output[4] = output[5] = input[0];
+        return input; //just copy input (mono) to each channel of our 5.1 output
+    }
 	
-	this.audioEngine = audioEngineImpl.createAudioEngine( function() {} );
-	this.audioStreamer; 
+	this.audioEngine = audioEngineImpl.createAudioEngine( settings, callback );
+	this.audioStreamer;
 	
 	this.processingCallbacks = [];
 	this.uiUpdateCallbacks = [];
@@ -76,7 +86,9 @@ function AudioEngine() {
 // Main audio processing function
 AudioEngine.prototype.getProcessAudio = function( numSamples, inputBuffer ) {
 	var self = this;
-	var numChannels = this.audioEngine.getNumInputChannels();
+
+	var options = this.audioEngine.getOptions(),
+		numChannels = options.inputChannels;
 	
 	var processAudio = function( numSamples, inputBuffer ) {		
 		// If we don't have any processing callbacks, just get out

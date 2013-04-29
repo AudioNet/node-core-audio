@@ -1,6 +1,8 @@
-/**
-    AudioEngine.cpp: Core audio functionality
- */
+//////////////////////////////////////////////////////////////////////////////
+//
+// AudioEngine.cpp: Core audio functionality
+// 
+//////////////////////////////////////////////////////////////////////////////
 // DevStudio!namespace Audio DevStudio!class AudioEngine
 
 
@@ -15,12 +17,15 @@ using namespace v8;
 
 Persistent<Function> Audio::AudioEngine::constructor;
 
-/**
- * The constructor.
- */
+//////////////////////////////////////////////////////////////////////////////
+/*! Initialize */
 Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> options, bool withThread ) :
-    audioJsCallback(Persistent<Function>::New(callback)){
-    
+    audioJsCallback(Persistent<Function>::New(callback)),
+	m_v8Context(Persistent<Context>::New(v8::Context::GetCurrent())),
+	sampleSize(4),
+	m_pIsolate(Isolate::GetCurrent()),
+	m_pLocker(new Locker(Isolate::GetCurrent())) {
+
     PaError openStreamErr;
     paStream = NULL;
 
@@ -40,6 +45,11 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     inputOverflowed = 0;
     outputUnderflowed = 0;
 
+	// Create V8 objects to hold our buffers
+	inputBuffer = Array::New( inputChannels );
+	for( int iChannel=0; iChannel<inputChannels; iChannel++ )
+		inputBuffer->Set( iChannel, Array::New(framesPerBuffer) );
+
     // Initialize our audio core
     PaError initErr = Pa_Initialize();
 
@@ -57,7 +67,6 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
         ThrowException( Exception::TypeError(String::New("Failed to initialize audio engine")) );
 
     applyOptions(options);
-
     
     fprintf(stderr, "input :%d\n", inputDevice);
     fprintf(stderr, "output :%d\n", outputDevice);
@@ -66,10 +75,9 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     fprintf(stderr, "size :%ld\n", sizeof(float));
     fprintf(stderr, "inputChannels :%d\n", inputChannels);
     fprintf(stderr, "outputChannels :%d\n", outputChannels);
-    fprintf(stderr, "interleaved :%d\n", interleaved);
-    
+    fprintf(stderr, "interleaved :%d\n", interleaved);    
 
-    uv_mutex_init( &callerThreadSamplesAccess );
+//     uv_mutex_init( &callerThreadSamplesAccess );
 
     // Open an audio I/O stream. 
     openStreamErr = Pa_OpenStream(  &paStream,
@@ -90,8 +98,9 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     if( startStreamErr != paNoError ) 
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
-    if (withThread)
-        uv_thread_create(&ptStreamThread, NULL, Audio::AudioEngine::streamThread);
+    uv_thread_create( &ptStreamThread, (void (__cdecl *)(void *))Audio::AudioEngine::streamThread, (void*)this );
+
+	//uv_thread_join( &ptStreamThread );
 
 } // end Constructor
 
@@ -100,9 +109,10 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
  * GetOptions function for v8 getOptions.
  */
 v8::Handle<v8::Value> Audio::AudioEngine::GetOptions(const v8::Arguments& args){
-    HandleScope scope;
+    Locker v8Locker;
+	HandleScope scope;
 
-    Local<Object> options;
+    Local<Object> options = Object::New();
 
     AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
     
@@ -133,11 +143,11 @@ v8::Handle<v8::Value> Audio::AudioEngine::SetOptions(const v8::Arguments& args){
 
     if (args.Length() > 0){
         if (!args[0]->IsObject()) {
-            return ThrowException( Exception::TypeError(String::New("First argument should be an object.")) );
+            return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an object."))) );
         }
         options = Local<Object>::Cast( args[0] );
     } else {
-        return Exception::TypeError(String::New("First argument does not exist."));
+        return scope.Close( Exception::TypeError(String::New("First argument does not exist.")) );
     }
 
     AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
@@ -216,39 +226,48 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ){
 /**
  * Prepares the input/output buffers and calls the javascript callback.
  */
-void Audio::AudioEngine::callCallback(uv_async_t* handle, int status){
-    HandleScope scope;
+void Audio::AudioEngine::callCallback(uv_work_t* request, int status) {
+	//AudioEngine* engine = reinterpret_cast<AudioEngine*>(handle->data);
+	AudioEngine *engine = (AudioEngine*)request->data;
+	
+	engine->GetIsolate()->Enter();
+// 	engine->GetContext()->Enter();
 
-	AudioEngine* engine = ((AudioEngine*)handle->data);
+// 	auto lockerr = engine->GetLocker();
 
-    Handle<Array> inputBuffer = engine->InputToArray();
-
+	//lockerr = new Locker( engine->GetIsolate() );
+    //HandleScope scope;
+	
+    engine->getInputBuffer();
+	
     Local<Value> argv[3] = {
-        Local<Value>::New(inputBuffer),
+        Local<Value>::New(engine->inputBuffer),
         Local<Value>::New(Boolean::New(engine->inputOverflowed)),
         Local<Value>::New(Boolean::New(engine->outputUnderflowed))
     };
-
+	
     Handle<Array> result = Handle<Array>::Cast(engine->audioJsCallback->Call(engine->audioJsCallback, 3, argv));
 
     if (result->IsArray()){
         engine->queueOutputBuffer(result);
     }
-    
+	
+ 	engine->GetIsolate()->Exit();
+// 	engine->GetContext()->Exit();
+
     uv_mutex_unlock(&engine->callerThreadSamplesAccess);
+	
 } // end callCallback
 
 
 /**
  * Returns an v8 Array based on the cachedInput.
  */
-Handle<Array> Audio::AudioEngine::InputToArray(){
+Handle<Array> Audio::AudioEngine::getInputBuffer(){
     int iSample = 0, iChannel = 0;
-    HandleScope scope;
 
-    Handle<Array> inputBuffer;
-
-    Handle<Number> sample;
+	Locker v8Locker;
+	HandleScope scope;
 
     if (interleaved){
         inputBuffer = Array::New( inputChannels * framesPerBuffer );
@@ -264,42 +283,38 @@ Handle<Array> Audio::AudioEngine::InputToArray(){
         }
 
     } else {
-        inputBuffer = Array::New( inputChannels );
+		inputBuffer = Array::New( inputChannels );
+		for( iChannel=0; iChannel<inputChannels; iChannel++ ) {
+			auto tempBuffer = Local<Array>( Array::New(framesPerBuffer) );
 
-        for (iChannel=0;iChannel<inputChannels;iChannel++)
-            inputBuffer->Set(iChannel, Array::New(framesPerBuffer));
+			for( iSample=0; iSample<framesPerBuffer; iSample++ ) {
+				tempBuffer->Set( iSample, getSample(iSample) );
+			}
 
-        iChannel = -1;
-        while(iSample < framesPerBuffer*inputChannels){
-
-            if (iSample%inputChannels == 0)
-                iChannel++;
-
-            inputBuffer->Get(iSample%inputChannels)->ToObject()->Set(
-                iChannel,
-                getSample(iSample)
-            );
-
-            iSample++;
-        }
-
+			inputBuffer->Set( iChannel, tempBuffer );
+		}
     }
 
-    return inputBuffer;
+    return scope.Close( inputBuffer );
 } // end InputToArray
 
 /**
  * Returns the samples recorded from the soundcard as v8 Number.
  */
 Handle<Number> Audio::AudioEngine::getSample(int position){
-    HandleScope scope;
+    
+	Locker v8Locker;
+	HandleScope scope;
 
     Handle<Number> sample;
 
     switch (sampleFormat){
-        case paFloat32:
-            sample = Number::New(((float*)cachedInputSampleBlock)[position]); break;
-        case paInt32:
+        case paFloat32: {
+			float fValue = ((float*)cachedInputSampleBlock)[position];
+
+            sample = Number::New( fValue ); 
+			break; 
+		} case paInt32:
             sample = Integer::New(((int*)cachedInputSampleBlock)[position]); break;
         case paInt24:
             sample = Integer::New(
@@ -314,7 +329,7 @@ Handle<Number> Audio::AudioEngine::getSample(int position){
             sample = Integer::New(cachedInputSampleBlock[position]*-1); break;
     }
 
-    return sample;
+    return scope.Close( sample );
 } // end getSample
 
 
@@ -354,7 +369,6 @@ void Audio::AudioEngine::setSample(int position, Handle<Value> sample){
  */
 void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
     int iSample = 0, iChannel = -1;
-    HandleScope scope;
 
     cachedOutputSamplesLength = 0;
 
@@ -405,20 +419,33 @@ void* Audio::AudioEngine::streamThread(void *pEngine){
     AudioEngine* engine = ((AudioEngine*)pEngine);
     PaError err;
 
+	assert( engine->paStream );
+
     while(1){
 
         err = Pa_ReadStream(engine->paStream, engine->cachedInputSampleBlock, engine->framesPerBuffer);
 
         engine->inputOverflowed = (err != paNoError);
 
-        uv_mutex_trylock(&engine->callerThreadSamplesAccess);
+        //uv_mutex_trylock(&engine->callerThreadSamplesAccess);
 
-		uv_async_t* async;
-		async->async_cb= callCallback;
-		async->data = engine;
+		uv_work_t* request = new uv_work_t;
+		request->work_cb= (uv_work_cb)callCallback;
+		request->data = engine;
 
-        uv_async_send(async); //call into the v8 thread
-        uv_mutex_lock(&engine->callerThreadSamplesAccess); //wait, untill js call is done
+		//callCallback( request, 0 );
+
+// 		uv_thread_create( &engine->jsAudioThread, (void (__cdecl *)(void *))Audio::AudioEngine::callCallback, (void*)engine );
+// 
+// 		uv_thread_join( &engine->jsAudioThread );
+
+		uv_mutex_trylock( &engine->callerThreadSamplesAccess );
+
+        //uv_async_send(async); //call into the v8 thread
+ 		//uv_queue_work(uv_default_loop(), request, (uv_work_cb)callCallback, (uv_after_work_cb)afterWork );
+		int statusInt = 0;
+		callCallback( request, statusInt );
+        uv_mutex_lock(&engine->callerThreadSamplesAccess); //wait, until js call is done
 
         if (engine->cachedOutputSamplesLength > 0){
             err = Pa_WriteStream(engine->paStream, engine->cachedOutputSampleBlock, engine->cachedOutputSamplesLength);
@@ -487,7 +514,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
 
     if (args.Length() > 0) {
         if (!args[0]->IsObject())
-            return ThrowException( Exception::TypeError(String::New("First argument must be an object.")) );
+            return scope.Close( ThrowException(Exception::TypeError(String::New("First argument must be an object."))) );
         else
             options = Local<Object>::Cast( args[0] );
     } else {
@@ -517,7 +544,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::Write( const v8::Arguments& args ) {
     AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
     if (args.Length() > 1 || !args[0]->IsArray()){
-        return ThrowException( Exception::TypeError(String::New("First argument should be an array.")) );
+        return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an array."))) );
     }
 
     engine->queueOutputBuffer(Local<Array>::Cast( args[0] ));
@@ -544,7 +571,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::Read( const v8::Arguments& args ) {
 
     Pa_ReadStream(engine->paStream, engine->cachedInputSampleBlock, engine->framesPerBuffer);
 
-    Handle<Array> input = engine->InputToArray();
+    Handle<Array> input = engine->getInputBuffer();
     
     return scope.Close( input );
 } // end Read
@@ -572,7 +599,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetDeviceName( const v8::Arguments& ar
     HandleScope scope;
 
     if( !args[0]->IsNumber() ) {
-        return ThrowException( Exception::TypeError(String::New("getDeviceName() requires a device index")) );
+        return scope.Close( ThrowException(Exception::TypeError(String::New("getDeviceName() requires a device index"))) );
     }
 
     Local<Number> deviceIndex = Local<Number>::Cast( args[0] );

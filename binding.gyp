@@ -27,7 +27,7 @@
 							'<(module_root_dir)/gyp/lib/portaudio_x86.lib'
 						],'copies': [
 				            {
-				              'destination': '<(module_root_dir)/build/Release/',
+				              'destination': '<(module_root_dir)/build/Debug/',
 				              'files': [
 				                '<(module_root_dir)/gyp/lib/portaudio_x86.dll',
 				                '<(module_root_dir)/gyp/lib/portaudio_x86.lib',
