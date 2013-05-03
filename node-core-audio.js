@@ -82,8 +82,9 @@ function AudioEngine() {
 
 		var outputBuffer = _this.getProcessAudio()( input[0].length, input );
 
-		if( outputBuffer === undefined )
+		if( outputBuffer === undefined ) {
 			console.log( "Audio processing function didn't return an output buffer" );
+		}
 
 		_this.audioEngine.write( outputBuffer );
 		
@@ -96,7 +97,7 @@ function AudioEngine() {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Main audio processing function
+// Returns our main audio processing function
 AudioEngine.prototype.getProcessAudio = function() {
 	var self = this;
 
@@ -104,7 +105,6 @@ AudioEngine.prototype.getProcessAudio = function() {
 		numChannels = options.inputChannels;
 	
 	var processAudio = function( numSamples, inputBuffer ) {	
-		console.log( "processing with " + self.processingCallbacks.length + " callbacks" );
 
 		// If we don't have any processing callbacks, just get out
 		if( self.processingCallbacks.length == 0 )
@@ -124,8 +124,6 @@ AudioEngine.prototype.getProcessAudio = function() {
 		if( typeof(self.audioStreamer) != "undefined" ) {
 			self.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
 		}
-
-		self.outputBuffer = processBuffer;
 		
 		var outputBuffer = self.outputBuffer;
 		
