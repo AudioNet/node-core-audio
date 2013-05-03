@@ -67,16 +67,14 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
 
     applyOptions(options);
     
-    fprintf(stderr, "input :%d\n", m_uInputDevice);
-    fprintf(stderr, "output :%d\n", m_uOutputDevice);
-    fprintf(stderr, "rate :%d\n", m_uSampleRate);
-    fprintf(stderr, "format :%d\n", m_uSampleFormat);
-    fprintf(stderr, "size :%ld\n", sizeof(float));
-    fprintf(stderr, "inputChannels :%d\n", m_uInputChannels);
-    fprintf(stderr, "outputChannels :%d\n", m_uOutputChannels);
-    fprintf(stderr, "interleaved :%d\n", m_bInterleaved);    
-
-//     uv_mutex_init( &callerThreadSamplesAccess );
+    fprintf( stderr, "input :%d\n", m_uInputDevice );
+    fprintf( stderr, "output :%d\n", m_uOutputDevice );
+    fprintf( stderr, "rate :%d\n", m_uSampleRate );
+    fprintf( stderr, "format :%d\n", m_uSampleFormat );
+    fprintf( stderr, "size :%ld\n", sizeof(float) );
+    fprintf( stderr, "inputChannels :%d\n", m_uInputChannels );
+    fprintf( stderr, "outputChannels :%d\n", m_uOutputChannels );
+    fprintf( stderr, "interleaved :%d\n", m_bInterleaved );    
 
     // Open an audio I/O stream. 
     openStreamErr = Pa_OpenStream(  &m_pPaStream,
@@ -98,8 +96,6 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
     uv_thread_create( &ptStreamThread, (void (__cdecl *)(void *))Audio::AudioEngine::runAudioLoop, (void*)this );
-
-	//uv_thread_join( &ptStreamThread );
 
 } // end Constructor
 
@@ -286,7 +282,7 @@ Handle<Array> Audio::AudioEngine::getInputBuffer(){
 /**
  * Returns the samples recorded from the soundcard as v8 Number.
  */
-Handle<Number> Audio::AudioEngine::getSample(int position){
+Handle<Number> Audio::AudioEngine::getSample( int position ){
     
 	Locker v8Locker;
 	HandleScope scope;
@@ -321,7 +317,7 @@ Handle<Number> Audio::AudioEngine::getSample(int position){
 /**
  * Sets a v8 sample value to a position for output.
  */
-void Audio::AudioEngine::setSample(int position, Handle<Value> sample){
+void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
 
     int temp;
     switch (m_uSampleFormat){
@@ -393,10 +389,8 @@ void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
 } // end queueOutputBuffer
 
 
-/**
- * The main thread that writes/reads the buffer from the soundcard stream.
- * If the user doesn't apply a javascript callback, this thread won't start.
- */
+//////////////////////////////////////////////////////////////////////////////
+/*! Run the main blocking audio loop */
 void* Audio::AudioEngine::runAudioLoop( void* data ){
 
     AudioEngine* pEngine = (AudioEngine*)data;

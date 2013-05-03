@@ -46,39 +46,39 @@ namespace Audio {
 		//! Get the number of available devices
         static v8::Handle<v8::Value> GetNumDevices( const v8::Arguments& args );
 
-        static v8::Handle<v8::Value> Write( const v8::Arguments& args );		//!< Write samples to the current audio device
-        static v8::Handle<v8::Value> Read( const v8::Arguments& args );			//!< Read samples from the current audio device
-
-        static v8::Handle<v8::Value> SetOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
-        static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );	//!< Gets options
-
-		static void callCallback(uv_work_t* handle, int status);
-        static void afterWork(uv_work_t* handle, int status) {};
-
-        void applyOptions( Local<Object> options );			//!< Sets the given options and restarts the audio stream if necessary
-        void wrapObject( v8::Handle<v8::Object> object );	//!< Wraps a handle into an object
-
 		//! Run the main blocking audio loop
-		static void* runAudioLoop( void *p );
+		static void* runAudioLoop( void* data );
 
 		//! Closes and reopens the PortAudio stream
         void restartStream();
 
-        void queueOutputBuffer(Handle<Array> result);
+		static v8::Handle<v8::Value> Write( const v8::Arguments& args );		//!< Write samples to the current audio device
+		static v8::Handle<v8::Value> Read( const v8::Arguments& args );			//!< Read samples from the current audio device
+
+		static v8::Handle<v8::Value> SetOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
+		static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );	//!< Gets options
+
+		static void callCallback(uv_work_t* handle, int status);
+		static void afterWork(uv_work_t* handle, int status) {};
+
+		void applyOptions( Local<Object> options );			//!< Sets the given options and restarts the audio stream if necessary
+		void wrapObject( v8::Handle<v8::Object> object );	//!< Wraps a handle into an object
+
+        void queueOutputBuffer( Handle<Array> result );
         Handle<Array> getInputBuffer();
-        Handle<Number> getSample(int position);
-        void setSample(int position, Handle<Value>);
+        Handle<Number> getSample( int position );
+        void setSample( int position, Handle<Value> sample );
 
         PaStream *m_pPaStream;				//!< The PortAudio stream object
         PaStreamParameters m_inputParams,	//!< PortAudio stream parameters
                            m_outputParams;
 
-		Handle<Array> m_hInputBuffer;	//!< Our pre-allocated input buffer
+		Handle<Array> m_hInputBuffer;		//!< Our pre-allocated input buffer
 
-		uv_thread_t ptStreamThread;		//!< Our stream thread
-        uv_thread_t jsAudioThread;		//!< Our JavaScript Audio thread
+		uv_thread_t ptStreamThread,			//!< Our stream thread
+					jsAudioThread;			//!< Our JavaScript Audio thread
 
-        uv_mutex_t m_mutex;				//!< A mutex for transferring data between the DSP and UI threads
+        uv_mutex_t m_mutex;					//!< A mutex for transferring data between the DSP and UI threads
 
         Persistent<Function> audioJsCallback;   //!< We call this with audio data whenever we get it
 
@@ -93,9 +93,9 @@ namespace Audio {
 
         unsigned int m_uNumCachedOutputSamples;		//!< Number of samples we've queued up, outgoing to the sound card
 
-        bool m_bInputOverflowed,	//!< Set when our buffers have overflowed
+        bool m_bInputOverflowed,			//!< Set when our buffers have overflowed
 			 m_bOutputUnderflowed,
-			 m_bInterleaved;		//!< Set when we're processing interleaved buffers
+			 m_bInterleaved;				//!< Set when we're processing interleaved buffers
 
         char* m_cachedInputSampleBlock,		//!< Temp buffer to hold buffer results
             * m_cachedOutputSampleBlock;
