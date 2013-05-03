@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "author": "Mike Vegeto <michael.vegeto@gmail.com>",
   "contributors": [
-    "MArc J. Schmidt <marc@kryn.org> (http://marcschmidt.name)"
+    "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)"
   ],
   "dependencies": {
     "audio-streamer": ">= 0.1.0",
