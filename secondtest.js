@@ -1,26 +1,12 @@
 var engine = require("./node-core-audio").createNewAudioEngine();
+var outputBuffer = [];
 
-engine.addAudioCallback( function(numSamples, inputBuffer) { 
-	//console.log( inputBuffer[0] );
-	var outputThing = new Array();
+engine.addAudioCallback( function(inputBuffer) { 
+	outputBuffer = inputBuffer[0];
 
-	outputThing = inputBuffer;
-
-	console.log( outputThing.length + " channels" );
-	console.log( outputThing[0].length + " samples" );
-	console.log( outputThing[1].length + " samples" );
-
-
-	for( var iChannel=0; iChannel<outputThing.length; ++iChannel ) {
-
-		for( var iSample=0; iSample<outputThing[iChannel].length; ++iSample ) {
-
-			if( iSample % 2 )
-				outputThing[iChannel][iSample] = 1.0;
-			else 
-				outputThing[iChannel][iSample] = -1.0;
-		}
+	for( var iSample=0; iSample<outputBuffer[0].length; ++iSample ) {
+		outputBuffer[0][iSample] = iSample / outputBuffer[0].length;
 	}
 
-	return outputThing;
+	return outputBuffer;
 });
