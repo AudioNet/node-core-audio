@@ -133,17 +133,18 @@ v8::Handle<v8::Value> Audio::AudioEngine::SetOptions( const v8::Arguments& args 
 
 	Local<Object> options;
 
-	if( args.Length() > 0 ){
+	if( args.Length() > 0 ) {
 		if( !args[0]->IsObject() ) {
 			return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an object."))) );
 		}
+
 		options = Local<Object>::Cast( args[0] );
 	} else {
 		return scope.Close( Exception::TypeError(String::New("First argument does not exist.")) );
 	}
 
-	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
-	engine->applyOptions( options );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	pEngine->applyOptions( options );
 
 	return scope.Close( Undefined() );
 } // end AudioEngine::SetOptions()x
@@ -152,17 +153,22 @@ v8::Handle<v8::Value> Audio::AudioEngine::SetOptions( const v8::Arguments& args 
 //////////////////////////////////////////////////////////////////////////////
 /*! Sets the given options and restarts the audio stream if necessary */
 void Audio::AudioEngine::applyOptions( Local<Object> options ) {
+
+	if( options->HasOwnProperty(String::New("inputDevice")) )
+		m_uInputDevice = options->Get(String::New("inputDevice"))->ToInteger()->Value();
+	if( options->HasOwnProperty(String::New("outputDevice")) )
+		m_uOutputDevice = options->Get(String::New("outputDevice"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("inputChannels")) )
-        m_uInputChannels = options->Get(String::New("inputChannels"))->ToInteger()->Value();
-
-    if( options->HasOwnProperty(String::New("outputChannels")) )
-        m_uOutputChannels = options->Get(String::New("outputChannels"))->ToInteger()->Value();
-
-    if( options->HasOwnProperty(String::New("framesPerBuffer")) )
-        m_uSamplesPerBuffer = options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
+		m_uInputChannels = options->Get(String::New("inputChannels"))->ToInteger()->Value();
+	if( options->HasOwnProperty(String::New("outputChannels")) )
+		m_uOutputChannels = options->Get(String::New("outputChannels"))->ToInteger()->Value();
+	if( options->HasOwnProperty(String::New("framesPerBuffer")) )
+		m_uSamplesPerBuffer = options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
+	if( options->HasOwnProperty(String::New("interleaved")) )
+		m_bInterleaved = options->Get(String::New("interleaved"))->ToBoolean()->Value();
 
     if( options->HasOwnProperty(String::New("sampleFormat")) ) {
-        switch (options->Get(String::New("sampleFormat"))->ToInteger()->Value()){
+        switch( options->Get(String::New("sampleFormat"))->ToInteger()->Value() ){
             case 1: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
             case 2: m_uSampleFormat = paInt32; m_uSampleSize = 4; break;
             case 4: m_uSampleFormat = paInt24; m_uSampleSize = 3; break;
@@ -172,42 +178,32 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
         }
     }
 
-    if( options->HasOwnProperty(String::New("inputDevice")) )
-        m_uInputDevice = options->Get(String::New("inputDevice"))->ToInteger()->Value();
-
-    if( options->HasOwnProperty(String::New("outputDevice")) )
-        m_uOutputDevice = options->Get(String::New("outputDevice"))->ToInteger()->Value();
-
-    if( options->HasOwnProperty(String::New("interleaved")) )
-        m_bInterleaved = options->Get(String::New("interleaved"))->ToBoolean()->Value();
-
-
-    // input
+    // Setup our input and output parameters
     m_inputParams.device = m_uInputDevice;
     m_inputParams.channelCount = m_uInputChannels;
     m_inputParams.sampleFormat = m_uSampleFormat;
     m_inputParams.suggestedLatency = Pa_GetDeviceInfo( m_inputParams.device )->defaultLowInputLatency;
     m_inputParams.hostApiSpecificStreamInfo = NULL;
 
-    if (m_cachedInputSampleBlock != NULL)
-        free(m_cachedInputSampleBlock);
+	m_outputParams.device = m_uOutputDevice;
+	m_outputParams.channelCount = m_uOutputChannels;
+	m_outputParams.sampleFormat = m_uSampleFormat;
+	m_outputParams.suggestedLatency = Pa_GetDeviceInfo( m_outputParams.device )->defaultLowOutputLatency;
+	m_outputParams.hostApiSpecificStreamInfo = NULL;
 
-    m_cachedInputSampleBlock = (char *)malloc(m_uSamplesPerBuffer * m_uInputChannels * m_uSampleSize);
+	// Clear out our temp buffer blocks
+    if( m_cachedInputSampleBlock != NULL )
+        free( m_cachedInputSampleBlock );
+	if( m_cachedOutputSampleBlock != NULL )
+		free( m_cachedOutputSampleBlock );
 
-    // Stereo output
-    m_outputParams.device = m_uOutputDevice;
-    m_outputParams.channelCount = m_uOutputChannels;
-    m_outputParams.sampleFormat = m_uSampleFormat;
-    m_outputParams.suggestedLatency = Pa_GetDeviceInfo( m_outputParams.device )->defaultLowOutputLatency;
-    m_outputParams.hostApiSpecificStreamInfo = NULL;
+	// Allocate some new space for our temp buffer blocks
+    m_cachedInputSampleBlock = (char*)malloc( m_uSamplesPerBuffer * m_uInputChannels * m_uSampleSize );
+	m_cachedOutputSampleBlock = (char*)malloc( m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize );
 
-    if (m_cachedOutputSampleBlock != NULL)
-        free(m_cachedOutputSampleBlock);
-
-    m_cachedOutputSampleBlock = (char *)malloc(m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize);
-
-    if (m_pPaStream != NULL && Pa_IsStreamActive(m_pPaStream))
+    if( m_pPaStream != NULL && Pa_IsStreamActive(m_pPaStream) )
         restartStream();
+
 } // end AudioEngine::applyOptions()
 
 
@@ -348,42 +344,38 @@ void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
 /**
  * Queues the buffer for being used in the streamThread.
  */
-void Audio::AudioEngine::queueOutputBuffer(Handle<Array> result){
-    int iSample = 0, iChannel = -1;
-
+void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
+	// Reset our record of the number of cached output samples
     m_uNumCachedOutputSamples = 0;
 
-    if (m_bInterleaved){
-
-        while(iSample < m_uSamplesPerBuffer*m_uOutputChannels){
-
-            setSample(iSample, result->Get(iSample));
-            iSample++;
-        }
+    if( m_bInterleaved ) {
+		for( int iSample=0; iSample<m_uSamplesPerBuffer*m_uOutputChannels; ++iSample )
+			setSample( iSample, result->Get(iSample) );
 
         m_uNumCachedOutputSamples = result->Length()/m_uOutputChannels;
 
     } else {
-
+		// Validate the structure of the output buffer array
+		if( !result->Get(0)->IsArray() ) {
+			ThrowException( Exception::TypeError(String::New("Output buffer not properly setup, 0th channel is not an array")) );
+			return;
+		}
+		
         Handle<Array> item;
 
-        while(iSample < m_uSamplesPerBuffer*m_uOutputChannels){
+		for( int iChannel=0; iChannel<m_uOutputChannels; ++iChannel ) {
+			for( int iSample=0; iSample<m_uSamplesPerBuffer; ++iSample ) {
+				
+				item = Handle<Array>::Cast( result->Get(iChannel) );
 
-            if (iSample%m_uOutputChannels == 0)
-                iChannel++;
+				if( item->IsArray() ) {
+					if( item->Length() > m_uNumCachedOutputSamples )
+						m_uNumCachedOutputSamples = item->Length();
 
-            item = Handle<Array>::Cast(result->Get(iSample%m_uOutputChannels));
-
-            if (item->IsArray()){
-                if (item->Length() > m_uNumCachedOutputSamples)
-                    m_uNumCachedOutputSamples = item->Length();
-                
-                setSample(iSample, item->Get(iChannel));
-            }
-
-            iSample++;
-        }
-
+					setSample( iSample, item->Get(iSample) );
+				}
+			}
+		}
     }
 
 } // end queueOutputBuffer
@@ -452,17 +444,18 @@ v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args)
 
 	unsigned argc = args.Length();
 
-	if (argc > 2) argc = 2;
+	if( argc > 2 ) 
+		argc = 2;
 
-	Handle<Value> *argv = new Handle<Value>[argc];
+	Handle<Value>* argv = new Handle<Value>[argc];
 
 	argv[0] = args[0];
-	if (argc > 1)
+	if( argc > 1 )
 		argv[1] = args[1];
 
 	Local<Object> instance = constructor->NewInstance( argc, argv );
 
-	return scope.Close(instance);
+	return scope.Close( instance );
 } // end AudioEngine::NewInstance()
 
 
@@ -474,10 +467,10 @@ v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
 
     Local<Function> callback;
     Local<Object> options;
-    bool withThread = false;
+    bool bWithThread = false;
 
-    if (args.Length() > 0) {
-        if (!args[0]->IsObject())
+    if( args.Length() > 0 ) {
+        if( !args[0]->IsObject() )
             return scope.Close( ThrowException(Exception::TypeError(String::New("First argument must be an object."))) );
         else
             options = Local<Object>::Cast( args[0] );
@@ -485,15 +478,15 @@ v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
         options = Object::New();
     }
     
-    if (args.Length() > 1){
-        if (args[1]->IsFunction()) {
+    if( args.Length() > 1 ) {
+        if( args[1]->IsFunction() ) {
             callback = Local<Function>::Cast( args[1] );
-            withThread = true;
+            bWithThread = true;
         }
     }
 
-    AudioEngine* engine = new AudioEngine( callback, options, withThread );
-    engine->Wrap( args.This() );
+    AudioEngine* pEngine = new AudioEngine( callback, options, bWithThread );
+    pEngine->Wrap( args.This() );
 
     return scope.Close( args.This() );
 } // end New()
@@ -504,20 +497,20 @@ v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
 v8::Handle<v8::Value> Audio::AudioEngine::Write( const v8::Arguments& args ) {
 	HandleScope scope;
 
-	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
 	if (args.Length() > 1 || !args[0]->IsArray()){
 		return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an array."))) );
 	}
 
-	engine->queueOutputBuffer(Local<Array>::Cast( args[0] ));
+	pEngine->queueOutputBuffer( Local<Array>::Cast(args[0]) );
 
-	Handle<Boolean> result = Boolean::New(false);
+	Handle<Boolean> result = Boolean::New( false );
 
-	if (engine->m_uNumCachedOutputSamples > 0){
-		if (!Pa_WriteStream(engine->m_pPaStream, engine->m_cachedOutputSampleBlock, engine->m_uNumCachedOutputSamples))
-			result = Boolean::New(true);
-		engine->m_uNumCachedOutputSamples = 0;
+	if( pEngine->m_uNumCachedOutputSamples > 0 ) {
+		if( !Pa_WriteStream(pEngine->m_pPaStream, pEngine->m_cachedOutputSampleBlock, pEngine->m_uNumCachedOutputSamples) )
+			result = Boolean::New( true );
+		pEngine->m_uNumCachedOutputSamples = 0;
 	}
 
 	return scope.Close( result );
@@ -529,11 +522,11 @@ v8::Handle<v8::Value> Audio::AudioEngine::Write( const v8::Arguments& args ) {
 v8::Handle<v8::Value> Audio::AudioEngine::Read( const v8::Arguments& args ) {
 	HandleScope scope;
 
-	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
-	Pa_ReadStream(engine->m_pPaStream, engine->m_cachedInputSampleBlock, engine->m_uSamplesPerBuffer);
+	Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
 
-	Handle<Array> input = engine->getInputBuffer();
+	Handle<Array> input = pEngine->getInputBuffer();
 
 	return scope.Close( input );
 } // end AudioEngine::Read()
@@ -544,9 +537,9 @@ v8::Handle<v8::Value> Audio::AudioEngine::Read( const v8::Arguments& args ) {
 v8::Handle<v8::Value> Audio::AudioEngine::IsActive( const v8::Arguments& args ) {
 	HandleScope scope;
 
-	AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
-	if (Pa_IsStreamActive(engine->m_pPaStream))
+	if( Pa_IsStreamActive(pEngine->m_pPaStream) )
 		return scope.Close( Boolean::New(true) );
 	else
 		return scope.Close( Boolean::New(false) );
@@ -564,9 +557,9 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetDeviceName( const v8::Arguments& ar
 
 	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
 
-	const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
+	const PaDeviceInfo* pDeviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
 
-	return scope.Close( String::New(deviceInfo->name) );
+	return scope.Close( String::New(pDeviceInfo->name) );
 } // end AudioEngine::GetDeviceName()
 
 
@@ -574,8 +567,6 @@ v8::Handle<v8::Value> Audio::AudioEngine::GetDeviceName( const v8::Arguments& ar
 /*! Get the number of available devices */
 v8::Handle<v8::Value> Audio::AudioEngine::GetNumDevices( const v8::Arguments& args ) {
 	HandleScope scope;
-
-    //AudioEngine* engine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
     int deviceCount = Pa_GetDeviceCount();
 
