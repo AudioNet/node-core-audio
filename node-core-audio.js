@@ -37,16 +37,18 @@ function AudioEngine( options ) {
 
 	var defaultOptions = {
 		inputChannels: 1,
-		outputChannels: 2
+		outputChannels: 2,
+		framesPerBuffer: 512,
 	};
 
 	var callback = function() {
         return input;
     }
 
-    this.options = options || defaultOptions;
-	
+    this.options = options || defaultOptions;	
 	this.audioEngine = audioEngineImpl.createAudioEngine( this.options, callback );
+	this.options = this.audioEngine.getOptions();
+
 	this.audioStreamer;
 	
 	this.processingCallbacks = [];
@@ -104,13 +106,16 @@ function AudioEngine( options ) {
 	
 	// Start polling the audio engine for data as fast as we can	
 	var _this = this;
+
+	this.processAudio = this.getProcessAudio();
+
 	setInterval( function() {	
 		_this.didProcessAudio = false;
 		
 		// Try to process audio
 		var input = _this.audioEngine.read();
 
-		var outputBuffer = _this.getProcessAudio()( input );
+		var outputBuffer = _this.processAudio( input );
 
 		if( validateOutputBufferStructure(outputBuffer) )
 			_this.audioEngine.write( outputBuffer );
@@ -126,7 +131,7 @@ function AudioEngine( options ) {
 //////////////////////////////////////////////////////////////////////////
 // Returns our main audio processing function
 AudioEngine.prototype.getProcessAudio = function() {
-	var self = this;
+	var _this = this;
 
 	var options = this.audioEngine.getOptions(),
 		numChannels = options.inputChannels,
@@ -135,30 +140,30 @@ AudioEngine.prototype.getProcessAudio = function() {
 	var processAudio = function( inputBuffer ) {	
 
 		// If we don't have any processing callbacks, just get out
-		if( self.processingCallbacks.length == 0 )
+		if( _this.processingCallbacks.length == 0 )
 			return inputBuffer;
 			
-		var processBuffer = self.processBuffer;
+		var processBuffer = inputBuffer;
 			
-		if( !self.options.interleaved )
-			deInterleave( inputBuffer, processBuffer, processBuffer[0].length, numChannels );
+		//if( !_this.options.interleaved )
+		//	deInterleave( inputBuffer, processBuffer, _this.options.framesPerBuffer, numChannels );
 
 		// Call through to all of our processing callbacks
-		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
-			processBuffer = self.processingCallbacks[iCallback]( processBuffer );
+		for( var iCallback = 0; iCallback < _this.processingCallbacks.length; ++iCallback ) {
+			processBuffer = _this.processingCallbacks[iCallback]( processBuffer );
 		} // end for each callback
 		
 		
-		if( typeof(self.audioStreamer) != "undefined" ) {
-			self.audioStreamer.streamAudio( processBuffer, processBuffer[0].length, numChannels );
+		if( typeof(_this.audioStreamer) != "undefined" ) {
+			_this.audioStreamer.streamAudio( processBuffer, _this.options.framesPerBuffer, numChannels );
 		}
 		
-		var outputBuffer = self.outputBuffer;
+		var outputBuffer = processBuffer;
 		
-		if( !self.options.interleaved )
-			interleave( processBuffer, outputBuffer, processBuffer[0].length, numChannels );
+		//if( !_this.options.interleaved )
+		//	interleave( processBuffer, outputBuffer, _this.options.framesPerBuffer, numChannels );
 		
-		self.didProcessAudio = true;
+		_this.didProcessAudio = true;
 		
 		// Return our output audio to the sound card
 		return outputBuffer;
@@ -291,16 +296,24 @@ AudioEngine.prototype.write = function() {
 //////////////////////////////////////////////////////////////////////////
 // Splits a 1d buffer into its channel components
 function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
+	// If the number of channels doesn't match, setup the output buffer
+	if( inputBuffer.length != outputBuffer.length ) {
+		outputBuffer = undefined;
+		outputBuffer = [];
+		for( var iChannel=0; iChannel<inputBuffer.length; ++iChannel )
+			outputBuffer[iChannel] = [];
+	}
+
 	if( numChannels < 2 ) {
 		outputBuffer[0] = inputBuffer;
 		return;
 	}
 
-	for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
-		for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
+	for( var iChannel = 0; iChannel < numChannels; iChannel += numChannels ) {
+		for( var iSample = 0; iSample < numSamplesPerBuffer; ++iSample ) {
 			outputBuffer[iChannel][iSample] = inputBuffer[iSample + iChannel];
-		} // end for each channel		
-	} // end for each sample position
+		} // end for each sample		
+	} // end for each channel
 } // end deInterleave()
 
 
@@ -308,8 +321,16 @@ function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChanne
 // Joins multidimensional array into single buffer
 function interleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels ) {
 	if( numChannels < 2 ) {
-		outputBuffer[0] = inputBuffer;
+		outputBuffer = inputBuffer;
 		return;
+	}
+
+	// If the number of channels doesn't match, setup the output buffer
+	if( inputBuffer.length != outputBuffer.length ) {
+		outputBuffer = undefined;
+		outputBuffer = [];
+		for( var iChannel=0; iChannel<inputBuffer.length; ++iChannel )
+			outputBuffer[iChannel] = [];
 	}
 
 	for( var iChannel = 0; iChannel < numChannels; ++iChannel ) {
