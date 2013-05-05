@@ -12,13 +12,14 @@
 // Node.js Exports
 var globalNamespace = {};
 (function (exports) {
-	exports.createNewAudioEngine = function() {
-		newAudioEngine= new AudioEngine();
+	exports.createNewAudioEngine = function( options ) {
+		newAudioEngine= new AudioEngine( options );
 		return newAudioEngine;
 	};
 }(typeof exports === 'object' && exports || globalNamespace));
 
 var FFT = require("fft");
+
 
 //////////////////////////////////////////////////////////////////////////
 // Namespace (lol)
@@ -27,28 +28,25 @@ var MAX_SUPPORTED_CHANNELS = 6;													// We need to allocate our process a
 																				// so we have to set some reasonable limit																				
 var log = function( a ) { if(SHOW_DEBUG_PRINTS) console.log(a); };				// A log function we can turn off
 var exists = function(a) { return typeof(a) == "undefined" ? false : true; };	// Check whether a variable exists
-var dflt = function(a, b) { 													// Default a to b if a is undefined
-	if( typeof(a) === "undefined" ){ 
-		return b; 
-	} else return a; 
-};
 
 
 //////////////////////////////////////////////////////////////////////////
 // Constructor
-function AudioEngine() {
+function AudioEngine( options ) {
 	var audioEngineImpl = require( __dirname + "/build/Debug/NodeCoreAudio" );
 
-	var settings = {
-		inputChannels: 2,
+	var defaultOptions = {
+		inputChannels: 1,
 		outputChannels: 2
 	};
 
 	var callback = function() {
         return input;
     }
+
+    this.options = options || defaultOptions;
 	
-	this.audioEngine = audioEngineImpl.createAudioEngine( settings, callback );
+	this.audioEngine = audioEngineImpl.createAudioEngine( this.options, callback );
 	this.audioStreamer;
 	
 	this.processingCallbacks = [];
@@ -62,6 +60,43 @@ function AudioEngine() {
 	this.fft = new FFT.complex( this.audioEngine.getOptions().framesPerBuffer, false );
 	this.fftBuffer = [];
 	
+	var _this = this;
+
+	function validateOutputBufferStructure( buffer ) {
+		if( buffer === undefined ) {
+			console.log( "Audio processing function didn't return an output buffer" );
+			return false;
+		}
+		
+		if( !_this.audioEngine.getOptions().interleaved ) {
+
+			if( buffer.length > _this.options.inputChannels ) {
+				console.log( "Output buffer has info for too many channels" );
+				return false;
+			} else if( buffer.length < _this.options.inputChannels ) {
+				console.log( "Output buffer doesn't have data for enough channels" );
+				return false;
+			}
+
+			if( typeof(buffer[0]) != "object" ) { 
+				console.log( "Output buffer not setup correctly, buffer[0] isn't an array" );
+				return false;
+			}
+
+			if( typeof(buffer[0][0]) != "number" ) {
+				console.log( "Output buffer not setup correctly, buffer[0][0] isn't a number" );
+				return false;
+			}
+		} else {
+			if( typeof(buffer[0]) != "number" ) {
+				console.log( "Output buffer not setup correctly, buffer[0] isn't a number" );
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	// Allocate a processing buffer for each of our channels
 	for( var iChannel = 0; iChannel<MAX_SUPPORTED_CHANNELS; ++iChannel ) {
 		this.processBuffer[iChannel] = [];
@@ -75,17 +110,7 @@ function AudioEngine() {
 		// Try to process audio
 		var input = _this.audioEngine.read();
 
-		var outputBuffer = _this.getProcessAudio()( input[0].length, input );
-
-		function validateOutputBufferStructure( buffer ) {
-			if( _this.audioEngine.getOptions().interleaved )
-				if( typeof(buffer[0]) != "Object" ) return false;
-			if( buffer === undefined ) {
-				console.log( "Audio processing function didn't return an output buffer" );
-				return false;
-			}
-			return true;
-		}
+		var outputBuffer = _this.getProcessAudio()( input );
 
 		if( validateOutputBufferStructure(outputBuffer) )
 			_this.audioEngine.write( outputBuffer );
@@ -107,7 +132,7 @@ AudioEngine.prototype.getProcessAudio = function() {
 		numChannels = options.inputChannels,
 		fftBuffer = this.fftBuffer;
 	
-	var processAudio = function( numSamples, inputBuffer ) {	
+	var processAudio = function( inputBuffer ) {	
 
 		// If we don't have any processing callbacks, just get out
 		if( self.processingCallbacks.length == 0 )
@@ -115,22 +140,23 @@ AudioEngine.prototype.getProcessAudio = function() {
 			
 		var processBuffer = self.processBuffer;
 			
-		// We need to deinterleave the inputbuffer
-		deInterleave( inputBuffer, processBuffer, numSamples, numChannels );
+		if( !self.options.interleaved )
+			deInterleave( inputBuffer, processBuffer, processBuffer[0].length, numChannels );
 
 		// Call through to all of our processing callbacks
 		for( var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback ) {
-			processBuffer = self.processingCallbacks[iCallback]( processBuffer, fftBuffer );
+			processBuffer = self.processingCallbacks[iCallback]( processBuffer );
 		} // end for each callback
 		
 		
 		if( typeof(self.audioStreamer) != "undefined" ) {
-			self.audioStreamer.streamAudio( processBuffer, numSamples, numChannels );
+			self.audioStreamer.streamAudio( processBuffer, processBuffer[0].length, numChannels );
 		}
 		
 		var outputBuffer = self.outputBuffer;
 		
-		interleave( processBuffer, outputBuffer, numSamples, numChannels );
+		if( !self.options.interleaved )
+			interleave( processBuffer, outputBuffer, processBuffer[0].length, numChannels );
 		
 		self.didProcessAudio = true;
 		
@@ -140,6 +166,21 @@ AudioEngine.prototype.getProcessAudio = function() {
 	
 	return processAudio;
 } // end AudioEngine.getProcessAudio()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Get the engine's options 
+AudioEngine.prototype.getOptions = function() {
+	return this.audioEngine.getOptions();
+} // end AudioEngine.getOptions()
+
+
+//////////////////////////////////////////////////////////////////////////
+// Get the engine's options 
+AudioEngine.prototype.setOptions = function( options ) {
+	this.options = options;
+	this.audioEngine.setOptions( this.options );
+} // end AudioEngine.setOptions()
 
 
 //////////////////////////////////////////////////////////////////////////
