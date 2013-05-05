@@ -37,14 +37,14 @@ namespace Audio {
 
     private:
         static v8::Persistent<v8::Function> constructor;                
-        static v8::Handle<v8::Value> New( const v8::Arguments& args );
+        static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
         
 		//! Returns whether the PortAudio stream is active
-        static v8::Handle<v8::Value> IsActive( const v8::Arguments& args );
+        static v8::Handle<v8::Value> isActive( const v8::Arguments& args );
 		//! Get the name of an audio device with a given ID number
-        static v8::Handle<v8::Value> GetDeviceName( const v8::Arguments& args );
+        static v8::Handle<v8::Value> getDeviceName( const v8::Arguments& args );
 		//! Get the number of available devices
-        static v8::Handle<v8::Value> GetNumDevices( const v8::Arguments& args );
+        static v8::Handle<v8::Value> getNumDevices( const v8::Arguments& args );
 
 		//! Run the main blocking audio loop
 		static void* runAudioLoop( void* data );
@@ -52,22 +52,23 @@ namespace Audio {
 		//! Closes and reopens the PortAudio stream
         void restartStream();
 
-		static v8::Handle<v8::Value> Write( const v8::Arguments& args );		//!< Write samples to the current audio device
-		static v8::Handle<v8::Value> Read( const v8::Arguments& args );			//!< Read samples from the current audio device
+		static v8::Handle<v8::Value> write( const v8::Arguments& args );		//!< Write samples to the current audio device
+		static v8::Handle<v8::Value> read( const v8::Arguments& args );			//!< Read samples from the current audio device
 
-		static v8::Handle<v8::Value> SetOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
-		static v8::Handle<v8::Value> GetOptions( const v8::Arguments& args );	//!< Gets options
+		static v8::Handle<v8::Value> setOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
+		static v8::Handle<v8::Value> getOptions( const v8::Arguments& args );	//!< Gets options
 
-		static void callCallback(uv_work_t* handle, int status);
+		static void processAudioCallback( uv_work_t* handle, int status );		//!< Runs one round of audio processing on the audio thread	
 		static void afterWork(uv_work_t* handle, int status) {};
 
-		void applyOptions( Local<Object> options );			//!< Sets the given options and restarts the audio stream if necessary
-		void wrapObject( v8::Handle<v8::Object> object );	//!< Wraps a handle into an object
+		void applyOptions( Local<Object> options );				//!< Sets the given options and restarts the audio stream if necessary
+		void wrapObject( v8::Handle<v8::Object> object );		//!< Wraps a handle into an object
 
-        void queueOutputBuffer( Handle<Array> result );
-        Handle<Array> getInputBuffer();
-        Handle<Number> getSample( int position );
-        void setSample( int position, Handle<Value> sample );
+        void queueOutputBuffer( Handle<Array> result );			//!< Queues up an array to be sent to the sound card
+        void setSample( int position, Handle<Value> sample );	//!< Sets a sample in the queued output buffer
+
+		Handle<Array> getInputBuffer();							//!< Returns a v8 array filled with input samples
+		Handle<Number> getSample( int position );				//!< Returns a sound card sample converted to a v8 Number
 
         PaStream *m_pPaStream;				//!< The PortAudio stream object
         PaStreamParameters m_inputParams,	//!< PortAudio stream parameters
@@ -80,7 +81,7 @@ namespace Audio {
 
         uv_mutex_t m_mutex;					//!< A mutex for transferring data between the DSP and UI threads
 
-        Persistent<Function> audioJsCallback;   //!< We call this with audio data whenever we get it
+        Persistent<Function> audioJsCallback;		//!< We call this with audio data whenever we get it
 
         int m_uOutputChannels,		//!< Number of input channels
             m_uInputChannels,		//!< Number of output channels

@@ -163,4 +163,4 @@ License
 =====
 MIT - See LICENSE file.
 
-CopyRight Mike Vegeto, 2013
+Copyright Mike Vegeto, 2013
