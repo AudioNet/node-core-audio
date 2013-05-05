@@ -38,7 +38,7 @@ function AudioEngine( options ) {
 	var defaultOptions = {
 		inputChannels: 1,
 		outputChannels: 2,
-		framesPerBuffer: 512,
+		framesPerBuffer: 1024,
 	};
 
 	var callback = function() {
@@ -53,7 +53,6 @@ function AudioEngine( options ) {
 	
 	this.processingCallbacks = [];
 	this.uiUpdateCallbacks = [];
-	this.didProcessAudio = false;
 	
 	this.outputBuffer = [];
 	this.tempBuffer = [];
@@ -109,9 +108,7 @@ function AudioEngine( options ) {
 
 	this.processAudio = this.getProcessAudio();
 
-	setInterval( function() {	
-		_this.didProcessAudio = false;
-		
+	setInterval( function() {			
 		// Try to process audio
 		var input = _this.audioEngine.read();
 
@@ -158,15 +155,8 @@ AudioEngine.prototype.getProcessAudio = function() {
 			_this.audioStreamer.streamAudio( processBuffer, _this.options.framesPerBuffer, numChannels );
 		}
 		
-		var outputBuffer = processBuffer;
-		
-		//if( !_this.options.interleaved )
-		//	interleave( processBuffer, outputBuffer, _this.options.framesPerBuffer, numChannels );
-		
-		_this.didProcessAudio = true;
-		
 		// Return our output audio to the sound card
-		return outputBuffer;
+		return processBuffer;
 	} // end processAudio()
 	
 	return processAudio;
@@ -176,7 +166,8 @@ AudioEngine.prototype.getProcessAudio = function() {
 //////////////////////////////////////////////////////////////////////////
 // Get the engine's options 
 AudioEngine.prototype.getOptions = function() {
-	return this.audioEngine.getOptions();
+	this.options = this.audioEngine.getOptions();
+	return this.options;
 } // end AudioEngine.getOptions()
 
 
