@@ -122,7 +122,7 @@ function AudioEngine( options ) {
 			_this.uiUpdateCallbacks[iUpdate]();
 		}
 	}, 0 );
-} // end AudioEngine();
+} // end AudioEngine()
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -174,8 +174,8 @@ AudioEngine.prototype.getOptions = function() {
 //////////////////////////////////////////////////////////////////////////
 // Get the engine's options 
 AudioEngine.prototype.setOptions = function( options ) {
-	this.options = options;
-	this.audioEngine.setOptions( this.options );
+	this.audioEngine.setOptions( options );
+	this.options = this.audioEngine.getOptions();
 } // end AudioEngine.setOptions()
 
 
