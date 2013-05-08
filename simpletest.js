@@ -15,7 +15,7 @@ var options = {
 	outputChannels: 2
 }
 
-var audioCallback = function( numSamples, inputBuffer ) {
+var audioCallback = function( inputBuffer ) {
 	console.log("sweet");
 	return inputBuffer;
 }
