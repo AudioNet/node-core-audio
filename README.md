@@ -50,6 +50,8 @@ function processAudio( inputBuffer ) {
 
 	return inputBuffer;
 }
+
+engine.addAudioCallback( processAudio ); 
 ```
 
 // Alternatively, you can read/write samples to the sound card manually
