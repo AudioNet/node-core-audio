@@ -230,8 +230,6 @@ void Audio::AudioEngine::processAudioCallback( uv_work_t* request, int status ) 
 
 	pEngine->GetIsolate()->Exit();
 
-	uv_mutex_unlock( &pEngine->m_mutex );
-
 } // end AudioEngine::processAudioCallback()
 
 
@@ -380,6 +378,7 @@ void* Audio::AudioEngine::runAudioLoop( void* data ){
 
 	assert( pEngine->m_pPaStream );
 
+    uv_mutex_init( &pEngine->m_mutex );
     while( true ) {
         error = Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
 
@@ -388,11 +387,11 @@ void* Audio::AudioEngine::runAudioLoop( void* data ){
 		uv_work_t* request = new uv_work_t;
 		request->data = pEngine;
 
-		uv_mutex_trylock( &pEngine->m_mutex );
-
 		int statusInt = 0;
-		processAudioCallback( request, statusInt );
-        uv_mutex_lock( &pEngine->m_mutex ); //wait, until js call is done
+		if (!uv_mutex_trylock( &pEngine->m_mutex )) {
+			processAudioCallback( request, statusInt );
+			uv_mutex_unlock( &pEngine->m_mutex );
+		}
 
         if( pEngine->m_uNumCachedOutputSamples > 0 ) {
             error = Pa_WriteStream( pEngine->m_pPaStream, pEngine->m_cachedOutputSampleBlock, pEngine->m_uNumCachedOutputSamples );
