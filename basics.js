@@ -60,53 +60,96 @@ portfinder.getPort({ port: 9999 }, function(err, portno) {
 });
 
 
+var inputDevice  = 'Soundflower (2ch)';
+var outputDevice = 'Built-in Output';
+var sampleFormat  = 'int32';
+
+var sampleFormats = { float32 : { format: 0x01, bits: 32, write: 'writeFloatLE' }
+                    , int32   : { format: 0x02, bits: 32, write: 'writeInt32LE' }
+                    , int16   : { format: 0x08, bits: 16, write: 'writeInt16LE' }
+                    , int8    : { format: 0x10, bits:  8, write: 'writeInt8'    }
+                    , uint8   : { format: 0x20, bits:  8, write: 'writeUInt8'   }
+                    };
+var options = null;
 var writer = null;
 
 var startaudio = function() {
-  var engine, i, j, options;
+  var device, engine, i, input, j, output;
 
   engine = coreaudio.createNewAudioEngine();
   engine.addAudioCallback(audioCallback);
 
-  engine.setOptions({ inputChannels: 1, framesPerBuffer: 4096, sampleFormat: 1 });
+  console.log('devices');
+  for (i = 0, j = engine.getNumDevices(); i < j; i++) {
+    device = engine.getDeviceName(i);
+    console.log('#' + i + ': ' + device);
+
+    if (device.indexOf(inputDevice) === 0) input = i;
+    if (device.indexOf(outputDevice) === 0) output = i;
+  }
+  if (!input)  { console.log('unable to find "' + inputDevice + '"');  process.exit(1); }
+  if (!output) { console.log('unable to find "' + outputDevice + '"'); process.exit(1); }
+
+console.log(sampleFormats[sampleFormat]);
+  engine.setOptions({ inputChannels   : 2
+                    , outputChannels  : 2
+                    , inputDevice     : input
+                    , outputDevice    : output
+                    , framesPerBuffer : 4096
+                    , sampleFormat    : sampleFormats[sampleFormat].format
+                    , interleaved     : true
+                    });
   options = engine.getOptions();
   console.log('options');
   console.log(options);
 
-  console.log('devices');
-  j = engine.getNumDevices();
-  for (i = 0; i < j; i++) console.log('#' + i + ': ' + engine.getDeviceName(i));
-
-/* portaudio produces a stream of single-precision IEEE floating-point values in the range of -1..1
-
-   to look like PCM the values should be in the range of 0..1 - hence the (x + 1)/2 transformation in the callback
-
-   once that is done, the raw stream is parseable as
-
-       sox -r 44100 -e floating-point -b 32 -c 1 - ...
-
-   WAV appears to be the easiest container to generate, so we'll use that.
-
-   HOWEVER, UNTIL THIS CODE IS DEBUGGED, WE'RE WRITING TO A FILE...
- */
-
+/* UNTIL THIS CODE IS DEBUGGED, WE'RE WRITING TO A FILE... */
   writer = fs.createWriteStream('/tmp/a.wav');
-  writer.write(waveheader(0, { format: 3, channels: options.inputChannels, sampleRate: options.sampleRate, bitDepth: 32 }));
+  writer.write(waveheader(0, { format     : (options.sampleFormat === sampleFormats.float32.format) ? 3 : 1
+                             , channels   : options.inputChannels
+                             , sampleRate : options.sampleRate
+                             , bitDepth   : sampleFormats[sampleFormat].bits
+                             }));
 };
 
 var audioCallback = function(inputBuffer) {
-  var i, j, len, pcm;
+  var depth, i, j, len, pcm;
 
-  for (i = 0; i < inputBuffer.length; i++) {
-    len = inputBuffer[i].length;
-    pcm = new Buffer(len * 4);
+  if (!!writer) {
+    depth = sampleFormats[sampleFormat].bits / 8;
 
-    for (j = 0; j < len; j++) pcm.writeFloatLE((inputBuffer[i][j] + 1.0) / 2.0, j * 4);
+    if (options.interleaved) {
+      len = inputBuffer.length;
+      pcm = new Buffer(len * depth);
 
-    if (!!writer) writer.write(pcm, 'binary');
+      if (options.sampleFormat === sampleFormats.float32.format) {
+        for (j = 0; j < len; j++) pcm.writeFloatLE((inputBuffer[j] + 1.0) / 2.0, j * depth);
+      } else {
+        for (j = 0; j < len; j++) pcm[sampleFormats[sampleFormat].write](inputBuffer[j], j * depth);
+      }
+
+      writer.write(pcm, 'binary');
+    } else {
+      for (i = 0; i < inputBuffer.length; i++) {
+        len = inputBuffer[i].length;
+        pcm = new Buffer(len * depth);
+
+        if (options.sampleFormat === sampleFormats.float32.format) {
+          for (j = 0; j < len; j++) pcm.writeFloatLE((inputBuffer[i][j] + 1.0) / 2.0, j * depth);
+        } else {
+          for (j = 0; j < len; j++) pcm[sampleFormats[sampleFormat].write](inputBuffer[i][j], j * depth);
+        }
+
+        writer.write(pcm, 'binary');
+      }
+    }
   }
 
-  for (i = 0; i < inputBuffer.length; i++) for (j = 0; j < inputBuffer[i].length; j++) inputBuffer[i][j] = 0.0;
+  if (options.sampleFormat === sampleFormats.float32.format) {
+    for (i = 0; i < inputBuffer.length; i++) for (j = 0; j < inputBuffer[i].length; j++) inputBuffer[i][j] = 0.0;
+  } else {
+    for (i = 0; i < inputBuffer.length; i++) for (j = 0; j < inputBuffer[i].length; j++) inputBuffer[i][j] = 0;
+  }
   return inputBuffer;
 };
 
