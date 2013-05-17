@@ -168,12 +168,12 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 
     if( options->HasOwnProperty(String::New("sampleFormat")) ) {
         switch( options->Get(String::New("sampleFormat"))->ToInteger()->Value() ){
-            case 1: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
-            case 2: m_uSampleFormat = paInt32; m_uSampleSize = 4; break;
-            case 4: m_uSampleFormat = paInt24; m_uSampleSize = 3; break;
-            case 8: m_uSampleFormat = paInt16; m_uSampleSize = 2; break;
-            case 10: m_uSampleFormat = paInt8; m_uSampleSize = 1; break;
-            case 20: m_uSampleFormat = paUInt8; m_uSampleSize = 1; break;
+            case 0x01: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
+            case 0x02: m_uSampleFormat = paInt32; m_uSampleSize = 4; break;
+            case 0x04: m_uSampleFormat = paInt24; m_uSampleSize = 3; break;
+            case 0x08: m_uSampleFormat = paInt16; m_uSampleSize = 2; break;
+            case 0x10: m_uSampleFormat = paInt8; m_uSampleSize = 1; break;
+            case 0x20: m_uSampleFormat = paUInt8; m_uSampleSize = 1; break;
         }
     }
 
