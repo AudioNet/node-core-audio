@@ -1,6 +1,6 @@
 {
   "name": "node-core-audio",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "Mike Vegeto <michael.vegeto@gmail.com> (http://mikevegeto.com/)",
   "contributors": [
     "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)"
@@ -10,7 +10,6 @@
     "fft": "~0.2.1",
     "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
     "portfinder": "0.2.1",
-    "lib-portaudio": "0.0.3"
   },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
