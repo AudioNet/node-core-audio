@@ -33,7 +33,7 @@ var exists = function(a) { return typeof(a) == "undefined" ? false : true; };	//
 //////////////////////////////////////////////////////////////////////////
 // Constructor
 function AudioEngine( options ) {
-	var audioEngineImpl = require( __dirname + "/build/Debug/NodeCoreAudio" );
+	var audioEngineImpl = require( __dirname + "/build/Release/NodeCoreAudio" );
 
 	var defaultOptions = {
 		inputChannels: 1,
