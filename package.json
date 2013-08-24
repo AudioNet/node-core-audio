@@ -9,7 +9,7 @@
     "audio-streamer": ">= 0.1.0",
     "fft": "~0.2.1",
     "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
-    "portfinder": "0.2.1",
+    "portfinder": "0.2.1"
   },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
