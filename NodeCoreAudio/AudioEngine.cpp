@@ -157,15 +157,15 @@ v8::Handle<v8::Value> Audio::AudioEngine::setOptions( const v8::Arguments& args 
 void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 
 	if( options->HasOwnProperty(String::New("inputDevice")) )
-		m_uInputDevice = options->Get(String::New("inputDevice"))->ToInteger()->Value();
+		m_uInputDevice = (int)options->Get(String::New("inputDevice"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("outputDevice")) )
-		m_uOutputDevice = options->Get(String::New("outputDevice"))->ToInteger()->Value();
+		m_uOutputDevice = (int)options->Get(String::New("outputDevice"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("inputChannels")) )
-		m_uInputChannels = options->Get(String::New("inputChannels"))->ToInteger()->Value();
+		m_uInputChannels = (int)options->Get(String::New("inputChannels"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("outputChannels")) )
-		m_uOutputChannels = options->Get(String::New("outputChannels"))->ToInteger()->Value();
+		m_uOutputChannels = (int)options->Get(String::New("outputChannels"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("framesPerBuffer")) )
-		m_uSamplesPerBuffer = options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
+		m_uSamplesPerBuffer = (int)options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
 
 	if( options->HasOwnProperty(String::New("interleaved")) )
 		m_bInterleaved = options->Get(String::New("interleaved"))->ToBoolean()->Value();
