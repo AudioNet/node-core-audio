@@ -17,6 +17,10 @@ using namespace v8;
 
 Persistent<Function> Audio::AudioEngine::constructor;
 
+static void do_work( void* arg ) {
+	Audio::AudioEngine::RunAudioLoop( arg );
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /*! Initialize */
 Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> options, bool withThread ) :
@@ -95,7 +99,7 @@ Audio::AudioEngine::AudioEngine( Local<Function>& callback, Local<Object> option
     if( startStreamErr != paNoError ) 
         ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
-    uv_thread_create( &ptStreamThread, (void (__cdecl*)(void*))Audio::AudioEngine::runAudioLoop, (void*)this );
+    uv_thread_create( &ptStreamThread, do_work, (void*)this );
 
 } // end Constructor
 
@@ -371,7 +375,7 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Run the main blocking audio loop */
-void* Audio::AudioEngine::runAudioLoop( void* data ){
+void* Audio::AudioEngine::RunAudioLoop( void* data ){
 
     AudioEngine* pEngine = (AudioEngine*)data;
     PaError error;
@@ -399,7 +403,7 @@ void* Audio::AudioEngine::runAudioLoop( void* data ){
             pEngine->m_uNumCachedOutputSamples = 0;
         }
     }
-} // end AudioEngine::runAudioLoop()
+} // end AudioEngine::RunAudioLoop()
 
 
 //////////////////////////////////////////////////////////////////////////////

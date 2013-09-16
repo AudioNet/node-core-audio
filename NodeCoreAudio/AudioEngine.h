@@ -33,6 +33,9 @@ namespace Audio {
 		Isolate* GetIsolate() { return m_pIsolate; }
 		Locker* GetLocker() { return m_pLocker; }
 
+        //! Run the main blocking audio loop
+        static void* RunAudioLoop( void* data );
+
         ~AudioEngine();		//!< OOL Destructor
 
     private:
@@ -45,9 +48,6 @@ namespace Audio {
         static v8::Handle<v8::Value> getDeviceName( const v8::Arguments& args );
 		//! Get the number of available devices
         static v8::Handle<v8::Value> getNumDevices( const v8::Arguments& args );
-
-		//! Run the main blocking audio loop
-		static void* runAudioLoop( void* data );
 
 		//! Closes and reopens the PortAudio stream
         void restartStream();
