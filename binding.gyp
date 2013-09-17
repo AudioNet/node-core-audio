@@ -17,7 +17,8 @@
 							'-lportaudio'
 						],
 						'cflags!': [ '-fno-exceptions' ],
-						'cflags_cc!': [ '-fno-exceptions' ]
+						'cflags_cc!': [ '-fno-exceptions' ],
+            'cflags_cc': [ '-std=c++0x' ]
 					}
 				],
 				[
