@@ -1,5 +1,8 @@
 Node Core Audio
 ==================
+
+![alt tag](https://nodei.co/npm-dl/node-core-audio.png)
+
 A C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionality
 
 <a href="http://flattr.com/thing/1404406/" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a>
