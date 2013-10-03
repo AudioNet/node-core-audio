@@ -12,13 +12,6 @@ Right now, it's basically a node.js binding for PortAudio.
 Installation
 =====
 
-On OSX/Linux you need portaudio libs installed.
-```
-	sudo apt-get intall portaudio
-	sudo port install portaudio
-	etc.
-```
-npm installation
 ```
 npm install node-core-audio
 ```
@@ -26,8 +19,7 @@ npm install node-core-audio
 Disclaimer
 =====
 
-I am actively working on this, but if you want to see it happen faster, please 
-send me an email!
+I am actively working on this, but if you want to see it happen faster, please send me an email!
 
 Basic Usage
 =====
@@ -56,7 +48,7 @@ function processAudio( inputBuffer ) {
 	return inputBuffer;
 }
 
-engine.addAudioCallback( processAudio ); 
+engine.addAudioCallback( processAudio );
 ```
 
 // Alternatively, you can read/write samples to the sound card manually
@@ -84,8 +76,7 @@ complex operations are possible, but dangerous.
 IF YOU TAKE TOO LONG TO RETURN A BUFFER TO THE SOUND CARD, YOU WILL HAVE AUDIO DROPOUTS
 
 The basic principle is that you should have everything ready to go before you enter
-the processing function. Buffers, objects, and functions should be created in a 
-constructor or static function outside of the audio callback whenever possible. The
+the processing function. Buffers, objects, and functions should be created in a constructor or static function outside of the audio callback whenever possible. The
 examples in this readme are not necessarily good practice as far as performance is concerned.
 
 The callback is only called if all buffers has been processed by the soundcard.
@@ -94,7 +85,7 @@ Audio Engine Options
 =====
 * sampleRate [default 44100]
   * Sample rate - number of samples per second in the audio stream
-* sampleFormat [default sampleFormatFloat32] 
+* sampleFormat [default sampleFormatFloat32]
   * Bit depth - Number of bits used to represent sample values
   * formats are sampleFormatFloat32, sampleFormatInt32, sampleFormatInt24, sampleFormatInt16, sampleFormatInt8, sampleFormatUInt8.
 * framesPerBuffer [default 256]
@@ -134,29 +125,29 @@ engine.addAudioCallback( processAudio );
 General functionality
 ```javascript
 // Returns whether the audio engine is active
-bool audio.isActive();
+bool engine.isActive();
 
 // Updates the parameters and restarts the engine. All keys from getOptions() are available.
-audio.setOptions({
+engine.setOptions({
 	inputChannels: 2
 });
 
 // Returns all parameters
-array audio.getOptions();
+array engine.getOptions();
 
 // Reads buffer of the input of the soundcard and returns as array.
 // Note: this is a blocking call, don't take too long!
-array audio.read();
+array engine.read();
 
 // Writes the buffer to the output of the soundcard. Returns false if underflowed.
 // notic: blocking i/o
-bool audio.write(array input);
+bool engine.write(array input);
 
-// Returns the name of a given device 
-string audio.getDeviceName( int inputDeviceIndex );
+// Returns the name of a given device
+string engine.getDeviceName( int inputDeviceIndex );
 
 // Returns the total number of audio devices
-int audio.getNumDevices();
+int engine.getNumDevices();
 ```
 
 Known Issues / TODO
