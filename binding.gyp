@@ -14,7 +14,7 @@
 				[
 					'OS!="win"', {
 						"libraries" : [
-							'-lportaudio'
+							'<(module_root_dir)/gyp/lib/libportaudio.a'
 						],
 						'cflags!': [ '-fno-exceptions' ],
 						'cflags_cc!': [ '-fno-exceptions' ],
@@ -37,8 +37,7 @@
 				        ]
 					}
 				]
-			],
-			
+			]
 		}
 	]
 }
