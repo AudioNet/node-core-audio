@@ -3,7 +3,8 @@
     "version": "0.3.5",
     "author": "Mike Vegeto <michael.vegeto@gmail.com> (http://mikevegeto.com/)",
     "contributors": [
-        "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)"
+        "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)",
+        "Jeremiah Senkpiel <fishrock123@rocketmail.com> (http://searchbeam.jit.su/)"
     ],
     "dependencies": {
         "audio-streamer": ">= 0.1.0",
