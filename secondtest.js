@@ -3,6 +3,7 @@ var connect = require('connect'),
 	httpPort = 4800;
 
 connect.createServer( connect.static(__dirname) ).listen(httpPort);
+console.log( "Listening on port: " + httpPort );
 
 var engine = require("./node-core-audio").createNewAudioEngine();
 var outputBuffer = [];
