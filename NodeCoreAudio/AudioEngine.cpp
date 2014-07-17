@@ -39,6 +39,7 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	m_uSamplesPerBuffer = DEFAULT_FRAMES_PER_BUFFER;
 	m_uNumCachedOutputSamples = 0;
 	m_uSampleFormat = 1;
+	m_uNumBuffers = DEFAULT_NUM_BUFFERS;
 	m_bInterleaved = false;
 	m_bReadMicrophone = true;
 
@@ -50,6 +51,9 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	
 	m_bInputOverflowed = 0;
 	m_bOutputUnderflowed = 0;
+	
+	m_uCurrentWriteBuffer = 0;
+	m_uCurrentReadBuffer = 0;
 
 	// Create V8 objects to hold our buffers
 	m_hInputBuffer = Array::New( m_uInputChannels );
@@ -128,6 +132,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
 	options->Set( String::New("sampleRate"), Number::New(pEngine->m_uSampleRate) );
 	options->Set( String::New("sampleFormat"), Number::New(pEngine->m_uSampleFormat) );
 	options->Set( String::New("framesPerBuffer"), Number::New(pEngine->m_uSamplesPerBuffer) );
+	options->Set( String::New("numBuffers"), Number::New(pEngine->m_uNumBuffers) );
 	options->Set( String::New("interleaved"), Boolean::New(pEngine->m_bInterleaved) );
 	options->Set( String::New("useMicrophone"), Boolean::New(pEngine->m_bReadMicrophone) );
 	
@@ -161,7 +166,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::setOptions( const v8::Arguments& args 
 //////////////////////////////////////////////////////////////////////////////
 /*! Sets the given options and restarts the audio stream if necessary */
 void Audio::AudioEngine::applyOptions( Local<Object> options ) {
-
+	unsigned int oldBufferCount = m_uNumBuffers;
 	if( options->HasOwnProperty(String::New("inputDevice")) )
 		m_uInputDevice = (int)options->Get(String::New("inputDevice"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("outputDevice")) )
@@ -172,6 +177,8 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 		m_uOutputChannels = (int)options->Get(String::New("outputChannels"))->ToInteger()->Value();
 	if( options->HasOwnProperty(String::New("framesPerBuffer")) )
 		m_uSamplesPerBuffer = (int)options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
+	if ( options->HasOwnProperty(String::New("numBuffers")) )
+		m_uNumBuffers = (int)options->Get(String::New("numBuffers"))->ToInteger()->Value();
 
 	if( options->HasOwnProperty(String::New("interleaved")) )
 		m_bInterleaved = options->Get(String::New("interleaved"))->ToBoolean()->Value();
@@ -205,15 +212,25 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	// Clear out our temp buffer blocks
 	if( m_cachedInputSampleBlock != NULL )
 		free( m_cachedInputSampleBlock );
-	if( m_cachedOutputSampleBlock != NULL )
+	if( m_cachedOutputSampleBlock != NULL ) {
+		for (int i = 0; i < oldBufferCount; i++) {
+			if ( m_cachedOutputSampleBlock[i] != NULL ) {
+				free(m_cachedOutputSampleBlock[i]);
+			}
+		}
 		free( m_cachedOutputSampleBlock );
+	}
 	if ( m_cachedOutputSampleBlockForWriting != NULL)
 		free (m_cachedOutputSampleBlockForWriting);
 
 	// Allocate some new space for our temp buffer blocks
 	m_cachedInputSampleBlock = (char*)malloc( m_uSamplesPerBuffer * m_uInputChannels * m_uSampleSize );
-	m_cachedOutputSampleBlock = (char*)malloc( m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize );
+	m_cachedOutputSampleBlock = (char**)malloc( sizeof(char*) * m_uNumBuffers);
+	for (int i = 0; i < m_uNumBuffers; i++) {
+		m_cachedOutputSampleBlock[i] = (char*)malloc( m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize );
+	}
 	m_cachedOutputSampleBlockForWriting = (char*)malloc( m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize );
+	m_uNumCachedOutputSamples = (unsigned int*)calloc( sizeof(unsigned int), m_uNumBuffers );
 	
 	if( m_pPaStream != NULL && Pa_IsStreamActive(m_pPaStream) )
 		restartStream();
@@ -294,26 +311,26 @@ void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
 	int temp;
 	switch( m_uSampleFormat ) {
 	case paFloat32:
-		((float *)m_cachedOutputSampleBlock)[position] = (float)sample->NumberValue();
+		((float *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (float)sample->NumberValue();
 		break;
 
 	case paInt32:
-		((int *)m_cachedOutputSampleBlock)[position] = (int)sample->NumberValue();
+		((int *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int)sample->NumberValue();
 		break;
 
 	case paInt24:
 		temp = (int)sample->NumberValue();
-		m_cachedOutputSampleBlock[3*position + 0] = temp >> 16;
-		m_cachedOutputSampleBlock[3*position + 1] = temp >> 8;
-		m_cachedOutputSampleBlock[3*position + 2] = temp;
+		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 0] = temp >> 16;
+		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 1] = temp >> 8;
+		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 2] = temp;
 		break;
 
 	case paInt16:
-		((int16_t *)m_cachedOutputSampleBlock)[position] = (int16_t)sample->NumberValue();
+		((int16_t *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int16_t)sample->NumberValue();
 		break;
 
 	default:
-		m_cachedOutputSampleBlock[position] = (char)sample->NumberValue();
+		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][position] = (char)sample->NumberValue();
 		break;
 	}
 } // end AudioEngine::setSample()
@@ -323,13 +340,13 @@ void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
 /*! Queues up an array to be sent to the sound card */
 void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 	// Reset our record of the number of cached output samples
-	m_uNumCachedOutputSamples = 0;
+	m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = 0;
 
 	if( m_bInterleaved ) {
 		for( int iSample=0; iSample<m_uSamplesPerBuffer*m_uOutputChannels; ++iSample )
 			setSample( iSample, result->Get(iSample) );
 
-		m_uNumCachedOutputSamples = result->Length()/m_uOutputChannels;
+		m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = result->Length()/m_uOutputChannels;
 
 	} else {
 		// Validate the structure of the output buffer array
@@ -345,14 +362,15 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 				
 				item = Handle<Array>::Cast( result->Get(iChannel) );
 				if( item->IsArray() ) {
-					if( item->Length() > m_uNumCachedOutputSamples )
-						m_uNumCachedOutputSamples = item->Length();
+					if( item->Length() > m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] )
+						m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = item->Length();
 
 					setSample( iSample, item->Get(iSample) );
 				}
 			} // end for each sample
 		} // end for each channel
 	}
+	m_uCurrentWriteBuffer = (m_uCurrentWriteBuffer + 1)%m_uNumBuffers;
 } // end AudioEngine::queueOutputBuffer()
 
 
@@ -369,10 +387,11 @@ void Audio::AudioEngine::RunAudioLoop(){
 
 		int numSamples = 0;
 		uv_mutex_lock( &m_mutex );
-		if (m_uNumCachedOutputSamples > 0) {
-			memcpy(m_cachedOutputSampleBlockForWriting, m_cachedOutputSampleBlock, m_uNumCachedOutputSamples * m_uOutputChannels * m_uSampleSize);
-			numSamples = m_uNumCachedOutputSamples;
-			m_uNumCachedOutputSamples = 0;
+		if (m_uNumCachedOutputSamples[m_uCurrentReadBuffer] > 0) {
+			memcpy(m_cachedOutputSampleBlockForWriting, m_cachedOutputSampleBlock[m_uCurrentReadBuffer], m_uNumCachedOutputSamples[m_uCurrentReadBuffer] * m_uOutputChannels * m_uSampleSize);
+			numSamples = m_uNumCachedOutputSamples[m_uCurrentReadBuffer];
+			m_uNumCachedOutputSamples[m_uCurrentReadBuffer] = 0;
+			m_uCurrentReadBuffer = (m_uCurrentReadBuffer + 1)%m_uNumBuffers;
 		}
 		uv_mutex_unlock( &m_mutex );
 
@@ -381,7 +400,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 			m_bOutputUnderflowed = (error != paNoError);
 		} else {
 			m_bOutputUnderflowed = true;
-			Sleep(10);
+			Sleep(1);
 		}
 	}
 } // end AudioEngine::RunAudioLoop()
@@ -484,7 +503,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::isBufferEmpty( const v8::Arguments& ar
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 	
 	uv_mutex_lock( &pEngine->m_mutex );
-	Handle<Boolean> isEmpty = Boolean::New(pEngine->m_uNumCachedOutputSamples == 0);
+	Handle<Boolean> isEmpty = Boolean::New(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
 	uv_mutex_unlock( &pEngine->m_mutex );
 	return scope.Close( isEmpty );
 } // end AudioEngine::isBufferEmpty()

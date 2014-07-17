@@ -15,6 +15,7 @@ using namespace v8; using namespace std;
 #define DEFAULT_SAMPLE_RATE         (44100)
 #define DEFAULT_SAMPLE_FORMAT      paFloat32
 #define DEFAULT_FRAMES_PER_BUFFER  (256)
+#define DEFAULT_NUM_BUFFERS        (8)
 
 namespace Audio {
 
@@ -87,10 +88,12 @@ namespace Audio {
 			m_uOutputDevice,		//!< Index of the current output device
 			m_uSampleRate,			//!< Current sample rate
 			m_uSamplesPerBuffer,	//!< Number of sample frames per process buffers
+			m_uNumBuffers,			//!< Number of sample buffers to keep ahead
 			m_uSampleFormat,		//!< Index of the current sample format
 			m_uSampleSize;			//!< Number of bytes per sample frame
 
-		unsigned int m_uNumCachedOutputSamples;		//!< Number of samples we've queued up, outgoing to the sound card
+		unsigned int m_uCurrentWriteBuffer, m_uCurrentReadBuffer;
+		unsigned int* m_uNumCachedOutputSamples;		//!< Number of samples we've queued up, outgoing to the sound card
 
 		bool m_bInputOverflowed,			//!< Set when our buffers have overflowed
 			 m_bOutputUnderflowed,
@@ -99,7 +102,7 @@ namespace Audio {
 			 m_bInterleaved;				//!< Set when we're processing interleaved buffers
 
 		char* m_cachedInputSampleBlock,		//!< Temp buffer to hold buffer results
-			* m_cachedOutputSampleBlock,
+			** m_cachedOutputSampleBlock,
 			* m_cachedOutputSampleBlockForWriting;
 
 		Isolate* m_pIsolate;
