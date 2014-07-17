@@ -39,14 +39,11 @@ function AudioEngine( options ) {
 		inputChannels: 1,
 		outputChannels: 2,
 		framesPerBuffer: 1024,
+		useMicrophone: true
 	};
-
-	var callback = function() {
-        return input;
-    }
-
-    this.options = options || defaultOptions;	
-	this.audioEngine = audioEngineImpl.createAudioEngine( this.options, callback );
+	
+    this.options = options || defaultOptions;
+	this.audioEngine = audioEngineImpl.createAudioEngine( this.options );
 	this.options = this.audioEngine.getOptions();
 
 	this.audioStreamer;
@@ -108,20 +105,22 @@ function AudioEngine( options ) {
 
 	this.processAudio = this.getProcessAudio();
 
-	setInterval( function() {			
-		// Try to process audio
-		var input = _this.audioEngine.read();
+	setInterval( function() {
+		if (_this.audioEngine.isBufferEmpty()) {
+			// Try to process audio
+			var input = _this.audioEngine.read();
 
-		var outputBuffer = _this.processAudio( input );
+			var outputBuffer = _this.processAudio( input );
 
-		if( validateOutputBufferStructure(outputBuffer) )
-			_this.audioEngine.write( outputBuffer );
-		
-		// Call our UI updates now that all the DSP work has been done
-		for( var iUpdate=0; iUpdate < _this.uiUpdateCallbacks.length; ++iUpdate ) {
-			_this.uiUpdateCallbacks[iUpdate]();
+			if( validateOutputBufferStructure(outputBuffer) )
+				_this.audioEngine.write( outputBuffer );
+			
+			// Call our UI updates now that all the DSP work has been done
+			for( var iUpdate=0; iUpdate < _this.uiUpdateCallbacks.length; ++iUpdate ) {
+				_this.uiUpdateCallbacks[iUpdate]();
+			}
 		}
-	}, 0 );
+	}, 1 );
 } // end AudioEngine()
 
 
