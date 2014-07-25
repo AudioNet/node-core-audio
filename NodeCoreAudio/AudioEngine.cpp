@@ -400,7 +400,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 			m_bOutputUnderflowed = (error != paNoError);
 		} else {
 			m_bOutputUnderflowed = true;
-			Sleep(1);
+			sleep(1);
 		}
 	}
 } // end AudioEngine::RunAudioLoop()
