@@ -1,6 +1,6 @@
 // Outputs sine waves panning left & right while showing microphone input on screen
 
-var coreaudio  = require('../');
+var coreaudio  = require('../../');
 var qt = require('node-qt');
 
 
