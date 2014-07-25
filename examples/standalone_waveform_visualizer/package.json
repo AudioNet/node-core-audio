@@ -1,0 +1,11 @@
+{
+  "name": "standalone_waveform_visualizer",
+  "version": "0.0.0",
+  "description": "node-core-audio example project",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "anprogrammer",
+  "license": "MIT"
+}
