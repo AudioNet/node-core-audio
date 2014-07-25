@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // AudioEngine.cpp: Core audio functionality
-// 
+//
 //////////////////////////////////////////////////////////////////////////////
 // DevStudio!namespace Audio DevStudio!class AudioEngine
 
@@ -48,10 +48,10 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	m_cachedInputSampleBlock = NULL;
 	m_cachedOutputSampleBlock = NULL;
 	m_cachedOutputSampleBlockForWriting = NULL;
-	
+
 	m_bInputOverflowed = 0;
 	m_bOutputUnderflowed = 0;
-	
+
 	m_uCurrentWriteBuffer = 0;
 	m_uCurrentReadBuffer = 0;
 
@@ -73,11 +73,11 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 		ThrowException( Exception::TypeError(String::New("Error: No default output device")) );
 	}
 
-	if( initErr != paNoError ) 
+	if( initErr != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to initialize audio engine")) );
 
 	applyOptions( options );
-	
+
 	fprintf( stderr, "input :%d\n", m_uInputDevice );
 	fprintf( stderr, "output :%d\n", m_uOutputDevice );
 	fprintf( stderr, "rate :%d\n", m_uSampleRate );
@@ -85,10 +85,10 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	fprintf( stderr, "size :%ld\n", sizeof(float) );
 	fprintf( stderr, "inputChannels :%d\n", m_uInputChannels );
 	fprintf( stderr, "outputChannels :%d\n", m_uOutputChannels );
-	fprintf( stderr, "interleaved :%d\n", m_bInterleaved );    
+	fprintf( stderr, "interleaved :%d\n", m_bInterleaved );
 	fprintf( stderr, "uses input: %d\n", m_bReadMicrophone);
 
-	// Open an audio I/O stream. 
+	// Open an audio I/O stream.
 	openStreamErr = Pa_OpenStream(  &m_pPaStream,
 									&m_inputParams,
 									&m_outputParams,
@@ -98,13 +98,13 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 									NULL,
 									NULL );
 
-	if( openStreamErr != paNoError ) 
+	if( openStreamErr != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to open audio stream")) );
 
 	// Start the audio stream
 	PaError startStreamErr = Pa_StartStream( m_pPaStream );
 
-	if( startStreamErr != paNoError ) 
+	if( startStreamErr != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
 	uv_mutex_init( &m_mutex );
@@ -122,7 +122,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
 	Local<Object> options = Object::New();
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
-	
+
 	options->Set( String::New("inputChannels"), Number::New(pEngine->m_uInputChannels) );
 	options->Set( String::New("outputChannels"), Number::New(pEngine->m_uOutputChannels) );
 
@@ -135,7 +135,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
 	options->Set( String::New("numBuffers"), Number::New(pEngine->m_uNumBuffers) );
 	options->Set( String::New("interleaved"), Boolean::New(pEngine->m_bInterleaved) );
 	options->Set( String::New("useMicrophone"), Boolean::New(pEngine->m_bReadMicrophone) );
-	
+
 	return scope.Close(options);
 } // end GetOptions
 
@@ -231,7 +231,7 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	}
 	m_cachedOutputSampleBlockForWriting = (char*)malloc( m_uSamplesPerBuffer * m_uOutputChannels * m_uSampleSize );
 	m_uNumCachedOutputSamples = (unsigned int*)calloc( sizeof(unsigned int), m_uNumBuffers );
-	
+
 	if( m_pPaStream != NULL && Pa_IsStreamActive(m_pPaStream) )
 		restartStream();
 
@@ -278,11 +278,11 @@ Handle<Number> Audio::AudioEngine::getSample( int position ) {
 	case paFloat32: {
 		float fValue = ((float*)m_cachedInputSampleBlock)[position];
 
-		sample = Number::New( fValue ); 
-		break; 
-					} 
+		sample = Number::New( fValue );
+		break;
+					}
 	case paInt32:
-		sample = Integer::New( ((int*)m_cachedInputSampleBlock)[position] ); 
+		sample = Integer::New( ((int*)m_cachedInputSampleBlock)[position] );
 		break;
 
 	case paInt24:
@@ -293,7 +293,7 @@ Handle<Number> Audio::AudioEngine::getSample( int position ) {
 		break;
 
 	case paInt16:
-		sample = Integer::New( ((int16_t*)m_cachedInputSampleBlock)[position] ); 
+		sample = Integer::New( ((int16_t*)m_cachedInputSampleBlock)[position] );
 		break;
 
 	default:
@@ -354,12 +354,12 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 			ThrowException( Exception::TypeError(String::New("Output buffer not properly setup, 0th channel is not an array")) );
 			return;
 		}
-		
+
 		Handle<Array> item;
 
 		for( int iChannel=0; iChannel<m_uOutputChannels; ++iChannel ) {
 			for( int iSample=0; iSample<m_uSamplesPerBuffer; ++iSample ) {
-				
+
 				item = Handle<Array>::Cast( result->Get(iChannel) );
 				if( item->IsArray() ) {
 					if( item->Length() > m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] )
@@ -381,7 +381,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 	PaError error;
 
 	assert( m_pPaStream );
-	
+
 	while( true ) {
 		m_bInputOverflowed = (error != paNoError);
 
@@ -400,7 +400,11 @@ void Audio::AudioEngine::RunAudioLoop(){
 			m_bOutputUnderflowed = (error != paNoError);
 		} else {
 			m_bOutputUnderflowed = true;
+#ifdef __WINDOWS__
+			Sleep(1);
+#else
 			sleep(1);
+#endif
 		}
 	}
 } // end AudioEngine::RunAudioLoop()
@@ -437,7 +441,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args)
 
 	unsigned argc = args.Length();
 
-	if( argc > 2 ) 
+	if( argc > 2 )
 		argc = 2;
 
 	Handle<Value>* argv = new Handle<Value>[argc];
@@ -489,7 +493,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::write( const v8::Arguments& args ) {
 	uv_mutex_lock( &pEngine->m_mutex );
 	pEngine->queueOutputBuffer( Local<Array>::Cast(args[0]) );
 	uv_mutex_unlock( &pEngine->m_mutex );
-	
+
 	Handle<Boolean> result = Boolean::New( false );
 
 	return scope.Close( result );
@@ -501,7 +505,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::isBufferEmpty( const v8::Arguments& ar
 	HandleScope scope;
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
-	
+
 	uv_mutex_lock( &pEngine->m_mutex );
 	Handle<Boolean> isEmpty = Boolean::New(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
 	uv_mutex_unlock( &pEngine->m_mutex );
@@ -518,7 +522,7 @@ v8::Handle<v8::Value> Audio::AudioEngine::read( const v8::Arguments& args ) {
 	if (pEngine->m_bReadMicrophone) {
 		Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
 	}
-	
+
 	Handle<Array> input = pEngine->getInputBuffer();
 
 	return scope.Close( input );
@@ -574,7 +578,7 @@ void Audio::AudioEngine::restartStream() {
 
 	// Stop the audio stream
 	error = Pa_StopStream( m_pPaStream );
-	
+
 	if( error != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to stop audio stream")) );
 
@@ -584,7 +588,7 @@ void Audio::AudioEngine::restartStream() {
 	if( error != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to close audio stream")) );
 
-	// Open an audio stream. 
+	// Open an audio stream.
 	error = Pa_OpenStream(  &m_pPaStream,
 		&m_inputParams,
 		&m_outputParams,
@@ -601,7 +605,7 @@ void Audio::AudioEngine::restartStream() {
 	// Start the audio stream
 	error = Pa_StartStream( m_pPaStream );
 
-	if( error != paNoError ) 
+	if( error != paNoError )
 		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
 
 } // end AudioEngine::restartStream()
