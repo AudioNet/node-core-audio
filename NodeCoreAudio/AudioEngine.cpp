@@ -13,6 +13,12 @@
 #include <node_internals.h>
 #include <node_object_wrap.h>
 #include <stdlib.h>
+
+#ifdef __linux__
+	#include <unistd.h>
+	#include <string.h>
+#endif
+
 using namespace v8;
 
 Persistent<Function> Audio::AudioEngine::constructor;
@@ -400,10 +406,10 @@ void Audio::AudioEngine::RunAudioLoop(){
 			m_bOutputUnderflowed = (error != paNoError);
 		} else {
 			m_bOutputUnderflowed = true;
-#ifdef __APPLE__
-			sleep(1);
-#else
+#ifdef __WINDOWS__
 			Sleep(1);
+#else
+			sleep(1);
 #endif
 		}
 	}
