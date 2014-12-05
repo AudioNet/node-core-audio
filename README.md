@@ -16,11 +16,6 @@ Installation
 npm install node-core-audio
 ```
 
-Disclaimer
-=====
-
-I am actively working on this, but if you want to see it happen faster, please send me an email!
-
 Basic Usage
 =====
 
