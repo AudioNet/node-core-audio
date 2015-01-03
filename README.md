@@ -35,8 +35,8 @@ var engine = coreAudio.createNewAudioEngine();
 //
 // Note: This function must return an output buffer
 function processAudio( inputBuffer ) {
-	console.log( inputBuffer.length + " channels" );
-	console.log( "Channel 0 has " = inputBuffer[0].length + " samples" );
+	console.log( "%d channels", inputBuffer.length );
+	console.log( "Channel 0 has %d samples", inputBuffer[0].length );
 
 	return inputBuffer;
 }
