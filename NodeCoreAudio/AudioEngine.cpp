@@ -19,7 +19,7 @@
 	#include <string.h>
 #endif
 
-using namespace v8;
+using namespace v8; using namespace std;
 
 Persistent<Function> Audio::AudioEngine::constructor;
 
