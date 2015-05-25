@@ -62,25 +62,25 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	m_uCurrentReadBuffer = 0;
 
 	// Create V8 objects to hold our buffers
-	m_hInputBuffer = Array::New( m_uInputChannels );
+	m_hInputBuffer = NanNew<Array>( m_uInputChannels );
 	for( int iChannel=0; iChannel<m_uInputChannels; iChannel++ )
-		m_hInputBuffer->Set( iChannel, Array::New(m_uSamplesPerBuffer) );
+		m_hInputBuffer->Set( iChannel, NanNew<Array>(m_uSamplesPerBuffer) );
 
 	// Initialize our audio core
 	PaError initErr = Pa_Initialize();
 
 	m_uInputDevice = Pa_GetDefaultInputDevice();
 	if( m_uInputDevice == paNoDevice ) {
-		ThrowException( Exception::TypeError(String::New("Error: No default input device")) );
+		NanThrowTypeError("Error: No default input device");
 	};
 
 	m_uOutputDevice = Pa_GetDefaultOutputDevice();
 	if( m_uOutputDevice == paNoDevice ) {
-		ThrowException( Exception::TypeError(String::New("Error: No default output device")) );
+		NanThrowTypeError("Error: No default output device");
 	}
 
 	if( initErr != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to initialize audio engine")) );
+		NanThrowTypeError("Failed to initialize audio engine");
 
 	applyOptions( options );
 
@@ -105,13 +105,13 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 									NULL );
 
 	if( openStreamErr != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to open audio stream")) );
+		NanThrowTypeError("Failed to open audio stream");
 
 	// Start the audio stream
 	PaError startStreamErr = Pa_StartStream( m_pPaStream );
 
 	if( startStreamErr != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
+		NanThrowTypeError("Failed to start audio stream");
 
 	uv_mutex_init( &m_mutex );
 	uv_thread_create( &ptStreamThread, do_work, (void*)this );
@@ -121,51 +121,55 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Gets options */
-v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
-	Locker v8Locker;
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
+NAN_METHOD(Audio::AudioEngine::getOptions){
+    NanScope();
+	//HandleScope scope;
+    NanLocker();
 
-	Local<Object> options = Object::New();
+	Local<Object> options = NanNew<Object>();
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
-	options->Set( String::New("inputChannels"), Number::New(pEngine->m_uInputChannels) );
-	options->Set( String::New("outputChannels"), Number::New(pEngine->m_uOutputChannels) );
+	options->Set( NanNew<String>("inputChannels"), NanNew<Number>(pEngine->m_uInputChannels) );
+	options->Set( NanNew<String>("outputChannels"), NanNew<Number>(pEngine->m_uOutputChannels) );
 
-	options->Set( String::New("inputDevice"), Number::New(pEngine->m_uInputDevice) );
-	options->Set( String::New("outputDevice"), Number::New(pEngine->m_uOutputDevice) );
+	options->Set( NanNew<String>("inputDevice"), NanNew<Number>(pEngine->m_uInputDevice) );
+	options->Set( NanNew<String>("outputDevice"), NanNew<Number>(pEngine->m_uOutputDevice) );
 
-	options->Set( String::New("sampleRate"), Number::New(pEngine->m_uSampleRate) );
-	options->Set( String::New("sampleFormat"), Number::New(pEngine->m_uSampleFormat) );
-	options->Set( String::New("framesPerBuffer"), Number::New(pEngine->m_uSamplesPerBuffer) );
-	options->Set( String::New("numBuffers"), Number::New(pEngine->m_uNumBuffers) );
-	options->Set( String::New("interleaved"), Boolean::New(pEngine->m_bInterleaved) );
-	options->Set( String::New("useMicrophone"), Boolean::New(pEngine->m_bReadMicrophone) );
+	options->Set( NanNew<String>("sampleRate"), NanNew<Number>(pEngine->m_uSampleRate) );
+	options->Set( NanNew<String>("sampleFormat"), NanNew<Number>(pEngine->m_uSampleFormat) );
+	options->Set( NanNew<String>("framesPerBuffer"), NanNew<Number>(pEngine->m_uSamplesPerBuffer) );
+	options->Set( NanNew<String>("numBuffers"), NanNew<Number>(pEngine->m_uNumBuffers) );
+	options->Set( NanNew<String>("interleaved"), NanNew<Boolean>(pEngine->m_bInterleaved) );
+	options->Set( NanNew<String>("useMicrophone"), NanNew<Boolean>(pEngine->m_bReadMicrophone) );
 
-	return scope.Close(options);
+	NanReturnValue(options);
 } // end GetOptions
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Set options, restarts audio stream */
-v8::Handle<v8::Value> Audio::AudioEngine::setOptions( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::setOptions( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::setOptions){
+    NanScope();
+	//HandleScope scope;
 	Local<Object> options;
 
 	if( args.Length() > 0 ) {
 		if( !args[0]->IsObject() ) {
-			return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an object."))) );
+			return NanThrowTypeError("First argument should be an object.");
 		}
 
 		options = Local<Object>::Cast( args[0] );
 	} else {
-		return scope.Close( Exception::TypeError(String::New("First argument does not exist.")) );
+        return NanThrowTypeError("First argument does not exist.");
 	}
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 	pEngine->applyOptions( options );
 
-	return scope.Close( Undefined() );
+    NanReturnUndefined();
 } // end AudioEngine::SetOptions()x
 
 
@@ -173,26 +177,26 @@ v8::Handle<v8::Value> Audio::AudioEngine::setOptions( const v8::Arguments& args 
 /*! Sets the given options and restarts the audio stream if necessary */
 void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	unsigned int oldBufferCount = m_uNumBuffers;
-	if( options->HasOwnProperty(String::New("inputDevice")) )
-		m_uInputDevice = (int)options->Get(String::New("inputDevice"))->ToInteger()->Value();
-	if( options->HasOwnProperty(String::New("outputDevice")) )
-		m_uOutputDevice = (int)options->Get(String::New("outputDevice"))->ToInteger()->Value();
-	if( options->HasOwnProperty(String::New("inputChannels")) )
-		m_uInputChannels = (int)options->Get(String::New("inputChannels"))->ToInteger()->Value();
-	if( options->HasOwnProperty(String::New("outputChannels")) )
-		m_uOutputChannels = (int)options->Get(String::New("outputChannels"))->ToInteger()->Value();
-	if( options->HasOwnProperty(String::New("framesPerBuffer")) )
-		m_uSamplesPerBuffer = (int)options->Get(String::New("framesPerBuffer"))->ToInteger()->Value();
-	if ( options->HasOwnProperty(String::New("numBuffers")) )
-		m_uNumBuffers = (int)options->Get(String::New("numBuffers"))->ToInteger()->Value();
+	if( options->HasOwnProperty(NanNew<String>("inputDevice")) )
+		m_uInputDevice = (int)options->Get(NanNew<String>("inputDevice"))->ToInteger()->Value();
+	if( options->HasOwnProperty(NanNew<String>("outputDevice")) )
+		m_uOutputDevice = (int)options->Get(NanNew<String>("outputDevice"))->ToInteger()->Value();
+	if( options->HasOwnProperty(NanNew<String>("inputChannels")) )
+		m_uInputChannels = (int)options->Get(NanNew<String>("inputChannels"))->ToInteger()->Value();
+	if( options->HasOwnProperty(NanNew<String>("outputChannels")) )
+		m_uOutputChannels = (int)options->Get(NanNew<String>("outputChannels"))->ToInteger()->Value();
+	if( options->HasOwnProperty(NanNew<String>("framesPerBuffer")) )
+		m_uSamplesPerBuffer = (int)options->Get(NanNew<String>("framesPerBuffer"))->ToInteger()->Value();
+	if ( options->HasOwnProperty(NanNew<String>("numBuffers")) )
+		m_uNumBuffers = (int)options->Get(NanNew<String>("numBuffers"))->ToInteger()->Value();
 
-	if( options->HasOwnProperty(String::New("interleaved")) )
-		m_bInterleaved = options->Get(String::New("interleaved"))->ToBoolean()->Value();
-	if ( options->HasOwnProperty(String::New("useMicrophone")) )
-		m_bReadMicrophone = options->Get(String::New("useMicrophone"))->ToBoolean()->Value();
+	if( options->HasOwnProperty(NanNew<String>("interleaved")) )
+		m_bInterleaved = options->Get(NanNew<String>("interleaved"))->ToBoolean()->Value();
+	if ( options->HasOwnProperty(NanNew<String>("useMicrophone")) )
+		m_bReadMicrophone = options->Get(NanNew<String>("useMicrophone"))->ToBoolean()->Value();
 
-	if( options->HasOwnProperty(String::New("sampleFormat")) ) {
-		switch( options->Get(String::New("sampleFormat"))->ToInteger()->Value() ){
+	if( options->HasOwnProperty(NanNew<String>("sampleFormat")) ) {
+		switch( options->Get(NanNew<String>("sampleFormat"))->ToInteger()->Value() ){
 			case 0x01: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
 			case 0x02: m_uSampleFormat = paInt32; m_uSampleSize = 4; break;
 			case 0x04: m_uSampleFormat = paInt24; m_uSampleSize = 3; break;
@@ -246,19 +250,22 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a v8 array filled with input samples */
 Handle<Array> Audio::AudioEngine::getInputBuffer() {
-	Locker v8Locker;
-	HandleScope scope;
+//NAN_METHOD(Audio::AudioEngine::getInputBuffer){
+    NanEscapableScope();
+    //NanScope();
+    NanLocker();
+	//HandleScope scope;
 
 	if( m_bInterleaved ) {
-		m_hInputBuffer = Array::New( m_uInputChannels * m_uSamplesPerBuffer );
+		m_hInputBuffer = NanNew<Array>( m_uInputChannels * m_uSamplesPerBuffer );
 
 		for( int iSample=0; iSample<m_uSamplesPerBuffer*m_uInputChannels; ++iSample ) {
 			m_hInputBuffer->Set( iSample, getSample(iSample) );
 		}
 	} else {
-		m_hInputBuffer = Array::New( m_uInputChannels );
+		m_hInputBuffer = NanNew<Array>( m_uInputChannels );
 		for( int iChannel=0; iChannel<m_uInputChannels; iChannel++ ) {
-			auto tempBuffer = Local<Array>( Array::New(m_uSamplesPerBuffer) );
+			auto tempBuffer = Local<Array>( NanNew<Array>(m_uSamplesPerBuffer) );
 
 			for( int iSample=0; iSample<m_uSamplesPerBuffer; iSample++ ) {
 				tempBuffer->Set( iSample, getSample(iSample) );
@@ -268,15 +275,17 @@ Handle<Array> Audio::AudioEngine::getInputBuffer() {
 		}
 	}
 
-	return scope.Close( m_hInputBuffer );
+	return NanEscapeScope( m_hInputBuffer );
 } // end AudioEngine::getInputBuffer()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a sound card sample converted to a v8 Number */
 Handle<Number> Audio::AudioEngine::getSample( int position ) {
-	Locker v8Locker;
-	HandleScope scope;
+//NAN_METHOD(Audio::AudioEngine::getSample){
+    NanEscapableScope();
+    NanLocker();
+	//HandleScope scope;
 
 	Handle<Number> sample;
 
@@ -284,30 +293,30 @@ Handle<Number> Audio::AudioEngine::getSample( int position ) {
 	case paFloat32: {
 		float fValue = ((float*)m_cachedInputSampleBlock)[position];
 
-		sample = Number::New( fValue );
+		sample = NanNew<Number>( fValue );
 		break;
 					}
 	case paInt32:
-		sample = Integer::New( ((int*)m_cachedInputSampleBlock)[position] );
+		sample = NanNew<Integer>( ((int*)m_cachedInputSampleBlock)[position] );
 		break;
 
 	case paInt24:
-		sample = Integer::New(
+		sample = NanNew<Integer>(
 				(m_cachedInputSampleBlock[3*position + 0] << 16)
 			  + (m_cachedInputSampleBlock[3*position + 1] << 8)
 			  + (m_cachedInputSampleBlock[3*position + 2]) );
 		break;
 
 	case paInt16:
-		sample = Integer::New( ((int16_t*)m_cachedInputSampleBlock)[position] );
+		sample = NanNew<Integer>( ((int16_t*)m_cachedInputSampleBlock)[position] );
 		break;
 
 	default:
-		sample = Integer::New( m_cachedInputSampleBlock[position]*-1 );
+		sample = NanNew<Integer>( m_cachedInputSampleBlock[position]*-1 );
 		break;
 	}
 
-	return scope.Close( sample );
+    return NanEscapeScope(sample);
 } // end AudioEngine::getSample()
 
 
@@ -357,7 +366,7 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 	} else {
 		// Validate the structure of the output buffer array
 		if( !result->Get(0)->IsArray() ) {
-			ThrowException( Exception::TypeError(String::New("Output buffer not properly setup, 0th channel is not an array")) );
+			NanThrowTypeError("Output buffer not properly setup, 0th channel is not an array");
 			return;
 		}
 
@@ -420,30 +429,47 @@ void Audio::AudioEngine::RunAudioLoop(){
 /*! Initialize our node object */
 void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	// Prepare constructor template
-	Local<FunctionTemplate> functionTemplate = FunctionTemplate::New (Audio::AudioEngine::New );
-	functionTemplate->SetClassName( String::NewSymbol("AudioEngine") );
+	Local<FunctionTemplate> functionTemplate = NanNew<FunctionTemplate> (Audio::AudioEngine::New );
+	functionTemplate->SetClassName( NanNew<String>("AudioEngine") );
 	functionTemplate->InstanceTemplate()->SetInternalFieldCount( 1 );
 
-	// Get
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("isActive"), FunctionTemplate::New(Audio::AudioEngine::isActive)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getDeviceName"), FunctionTemplate::New(Audio::AudioEngine::getDeviceName)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getNumDevices"), FunctionTemplate::New(Audio::AudioEngine::getNumDevices)->GetFunction() );
+
+    //Local<FunctionTemplate> constructorHandle = NanNew(constructor);
+    //target->Set(NanNew<String>("AudioEngine"), functionTemplate->GetFunction());
+	
+    // Get
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("isActive"), NanNew<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("getDeviceName"), NanNew<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("getNumDevices"), NanNew<FunctionTemplate>(Audio::AudioEngine::getNumDevices)->GetFunction() );
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "isActive", Audio::AudioEngine::isActive);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getDeviceName", Audio::AudioEngine::getDeviceName);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getNumDevices", Audio::AudioEngine::getNumDevices);
 
 	// Set
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("setOptions"), FunctionTemplate::New(Audio::AudioEngine::setOptions)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("getOptions"), FunctionTemplate::New(Audio::AudioEngine::getOptions)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("write"), FunctionTemplate::New(Audio::AudioEngine::write)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("read"), FunctionTemplate::New(Audio::AudioEngine::read)->GetFunction() );
-	functionTemplate->PrototypeTemplate()->Set( String::NewSymbol("isBufferEmpty"), FunctionTemplate::New(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("setOptions"), NanNew<FunctionTemplate>(Audio::AudioEngine::setOptions)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("getOptions"), NanNew<FunctionTemplate>(Audio::AudioEngine::getOptions)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("write"), NanNew<FunctionTemplate>(Audio::AudioEngine::write)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("read"), NanNew<FunctionTemplate>(Audio::AudioEngine::read)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( NanNew<String>("isBufferEmpty"), NanNew<FunctionTemplate>(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "setOptions", Audio::AudioEngine::setOptions);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getOptions", Audio::AudioEngine::getOptions);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "write", Audio::AudioEngine::write);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "read", Audio::AudioEngine::read);
+    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "isBufferEmpty", Audio::AudioEngine::isBufferEmpty);
 
-	constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
+	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
+    //Local<FunctionTemplate> tpl = NanNew<FunctionTemplate>(EOLFinder::New);
+    NanAssignPersistent(constructor, functionTemplate->GetFunction());
 } // end AudioEngine::Init()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Create a new instance of the audio engine */
-v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args) {
+
+NAN_METHOD(Audio::AudioEngine::NewInstance){
+    NanScope();
+	//HandleScope scope;
 
 	unsigned argc = args.Length();
 
@@ -456,72 +482,81 @@ v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args)
 	if( argc > 1 )
 		argv[1] = args[1];
 
-	Local<Object> instance = constructor->NewInstance( argc, argv );
+	//Local<Object> instance = constructor->NewInstance( argc, argv );
+	Local<Object> instance = NanNew(constructor)->NewInstance(argc, argv);
+	//Local<Object> instance = constructor->NewInstance(argc, argv);
 
-	return scope.Close( instance );
+	NanReturnValue( instance );
 } // end AudioEngine::NewInstance()
-
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Create a v8 object */
-v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::New){
+    NanScope();
+	//HandleScope scope;
 
 	Local<Object> options;
 
 	if( args.Length() > 0 ) {
 		if( !args[0]->IsObject() )
-			return scope.Close( ThrowException(Exception::TypeError(String::New("First argument must be an object."))) );
+            return NanThrowTypeError("First argument must be an object.");
 		else
 			options = Local<Object>::Cast( args[0] );
 	} else {
-		options = Object::New();
+		options = NanNew<Object>();
 	}
 
 	AudioEngine* pEngine = new AudioEngine( options );
 	pEngine->Wrap( args.This() );
 
-	return scope.Close( args.This() );
+	NanReturnValue( args.This() );
 } // end AudioEngine::New()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Write samples to the current audio device */
-v8::Handle<v8::Value> Audio::AudioEngine::write( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::write( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::write){
+    NanScope();
+	//HandleScope scope;
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
 	if (args.Length() > 1 || !args[0]->IsArray()){
-		return scope.Close( ThrowException(Exception::TypeError(String::New("First argument should be an array."))) );
+        return NanThrowTypeError("First argument should be an array.");
 	}
 
 	uv_mutex_lock( &pEngine->m_mutex );
 	pEngine->queueOutputBuffer( Local<Array>::Cast(args[0]) );
 	uv_mutex_unlock( &pEngine->m_mutex );
 
-	Handle<Boolean> result = Boolean::New( false );
+	Handle<Boolean> result = NanNew<Boolean>( false );
 
-	return scope.Close( result );
+	NanReturnValue( result );
 } // end AudioEngine::Write()
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Checks if the current audio buffer has been fed to Port Audio */
-v8::Handle<v8::Value> Audio::AudioEngine::isBufferEmpty( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::isBufferEmpty( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::isBufferEmpty){
+    NanScope();
+	//HandleScope scope;
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
 	uv_mutex_lock( &pEngine->m_mutex );
-	Handle<Boolean> isEmpty = Boolean::New(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
+	Handle<Boolean> isEmpty = NanNew<Boolean>(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
 	uv_mutex_unlock( &pEngine->m_mutex );
-	return scope.Close( isEmpty );
+	NanReturnValue( isEmpty );
 } // end AudioEngine::isBufferEmpty()
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Read samples from the current audio device */
-v8::Handle<v8::Value> Audio::AudioEngine::read( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::read( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::read){
+    NanScope();
+	//HandleScope scope;
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
@@ -531,49 +566,55 @@ v8::Handle<v8::Value> Audio::AudioEngine::read( const v8::Arguments& args ) {
 
 	Handle<Array> input = pEngine->getInputBuffer();
 
-	return scope.Close( input );
+	NanReturnValue( input );
 } // end AudioEngine::Read()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns whether the PortAudio stream is active */
-v8::Handle<v8::Value> Audio::AudioEngine::isActive( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::isActive( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::isActive){
+    NanScope();
+	//HandleScope scope;
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
 
 	if( Pa_IsStreamActive(pEngine->m_pPaStream) )
-		return scope.Close( Boolean::New(true) );
+		NanReturnValue( NanNew<Boolean>(true) );
 	else
-		return scope.Close( Boolean::New(false) );
+		NanReturnValue( NanNew<Boolean>(false) );
 } // end AudioEngine::IsActive()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Get the name of an audio device with a given ID number */
-v8::Handle<v8::Value> Audio::AudioEngine::getDeviceName( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::getDeviceName( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::getDeviceName){
+    NanScope();
+	//HandleScope scope;
 
 	if( !args[0]->IsNumber() ) {
-		return scope.Close( ThrowException(Exception::TypeError(String::New("getDeviceName() requires a device index"))) );
+		return  NanThrowTypeError("getDeviceName() requires a device index");
 	}
 
 	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
 
 	const PaDeviceInfo* pDeviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
 
-	return scope.Close( String::New(pDeviceInfo->name) );
+	NanReturnValue( NanNew<String>(pDeviceInfo->name) );
 } // end AudioEngine::GetDeviceName()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Get the number of available devices */
-v8::Handle<v8::Value> Audio::AudioEngine::getNumDevices( const v8::Arguments& args ) {
-	HandleScope scope;
+//v8::Handle<v8::Value> Audio::AudioEngine::getNumDevices( const v8::Arguments& args ) {
+NAN_METHOD(Audio::AudioEngine::getNumDevices){
+    NanScope();
+	//HandleScope scope;
 
 	int deviceCount = Pa_GetDeviceCount();
 
-	return scope.Close( Number::New(deviceCount) );
+	NanReturnValue( NanNew<Number>(deviceCount) );
 } // end AudioEngine::GetNumDevices()
 
 
@@ -586,13 +627,13 @@ void Audio::AudioEngine::restartStream() {
 	error = Pa_StopStream( m_pPaStream );
 
 	if( error != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to stop audio stream")) );
+		NanThrowTypeError("Failed to stop audio stream");
 
 	// Close the audio stream
 	error = Pa_CloseStream( m_pPaStream );
 
 	if( error != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to close audio stream")) );
+		NanThrowTypeError("Failed to close audio stream");
 
 	// Open an audio stream.
 	error = Pa_OpenStream(  &m_pPaStream,
@@ -605,14 +646,14 @@ void Audio::AudioEngine::restartStream() {
 		NULL );
 
 	if( error != paNoError ) {
-		ThrowException( Exception::TypeError(String::New("Failed to open audio stream :(")) );
+		NanThrowTypeError("Failed to open audio stream :(");
 	}
 
 	// Start the audio stream
 	error = Pa_StartStream( m_pPaStream );
 
 	if( error != paNoError )
-		ThrowException( Exception::TypeError(String::New("Failed to start audio stream")) );
+		NanThrowTypeError("Failed to start audio stream");
 
 } // end AudioEngine::restartStream()
 

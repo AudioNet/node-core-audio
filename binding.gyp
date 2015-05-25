@@ -7,6 +7,7 @@
 				'NodeCoreAudio/NodeCoreAudio.cpp',
 			],
 			'include_dirs': [
+                "<!(node -e \"require('nan')\")",
 				'<(module_root_dir)/NodeCoreAudio/',
 				'<(module_root_dir)/portaudio/'
 			],

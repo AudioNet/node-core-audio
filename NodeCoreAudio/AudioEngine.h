@@ -10,6 +10,7 @@
 #include <vector>
 #include <node_internals.h>
 #include <node_object_wrap.h>
+#include <nan.h>
 using namespace v8; using namespace std;
 
 #define DEFAULT_SAMPLE_RATE         (44100)
@@ -29,7 +30,8 @@ namespace Audio {
 		//! Initialize our node object
 		static void Init(v8::Handle<v8::Object> target);
 		//! Create a new instance of the audio engine
-		static v8::Handle<v8::Value> NewInstance(const v8::Arguments& args);
+		//static v8::Handle<v8::Value> NewInstance(const v8::Arguments& args);
+        static NAN_METHOD(NewInstance);
 
 		Isolate* GetIsolate() { return m_pIsolate; }
 		Locker* GetLocker() { return m_pLocker; }
@@ -41,24 +43,33 @@ namespace Audio {
 
 	private:
 		static v8::Persistent<v8::Function> constructor;                
-		static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
+		//static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
+        static NAN_METHOD(New);
 		
 		//! Returns whether the PortAudio stream is active
-		static v8::Handle<v8::Value> isActive( const v8::Arguments& args );
+		//static v8::Handle<v8::Value> isActive( const v8::Arguments& args );
+        static NAN_METHOD(isActive);
 		//! Get the name of an audio device with a given ID number
-		static v8::Handle<v8::Value> getDeviceName( const v8::Arguments& args );
+		//static v8::Handle<v8::Value> getDeviceName( const v8::Arguments& args );
+        static NAN_METHOD(getDeviceName);
 		//! Get the number of available devices
-		static v8::Handle<v8::Value> getNumDevices( const v8::Arguments& args );
+		//static v8::Handle<v8::Value> getNumDevices( const v8::Arguments& args );
+        static NAN_METHOD(getNumDevices);
 
 		//! Closes and reopens the PortAudio stream
 		void restartStream();
 
-		static v8::Handle<v8::Value> write( const v8::Arguments& args );		//!< Write samples to the current audio device
-		static v8::Handle<v8::Value> read( const v8::Arguments& args );			//!< Read samples from the current audio device
-		static v8::Handle<v8::Value> isBufferEmpty( const v8::Arguments& args );	//!< Returns whether the data buffer is empty
+		//static v8::Handle<v8::Value> write( const v8::Arguments& args );		//!< Write samples to the current audio device
+        static NAN_METHOD(write);
+		//static v8::Handle<v8::Value> read( const v8::Arguments& args );			//!< Read samples from the current audio device
+        static NAN_METHOD(read);
+		//static v8::Handle<v8::Value> isBufferEmpty( const v8::Arguments& args );	//!< Returns whether the data buffer is empty
+        static NAN_METHOD(isBufferEmpty);
 		
-		static v8::Handle<v8::Value> setOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
-		static v8::Handle<v8::Value> getOptions( const v8::Arguments& args );	//!< Gets options
+		//static v8::Handle<v8::Value> setOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
+        static NAN_METHOD(setOptions);
+		//static v8::Handle<v8::Value> getOptions( const v8::Arguments& args );	//!< Gets options
+        static NAN_METHOD(getOptions);
 
 		static void afterWork(uv_work_t* handle, int status) {};
 
