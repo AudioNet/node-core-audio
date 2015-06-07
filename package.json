@@ -1,40 +1,43 @@
 {
-    "name": "node-core-audio",
-    "version": "0.4.1",
-    "author": "Mike Vegeto <michael.vegeto@gmail.com> (http://mikevegeto.com/)",
-    "contributors": [
-        "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)",
-        "Jeremiah Senkpiel <fishrock123@rocketmail.com> (http://searchbeam.jit.su/)",
-        "Daniel Church <CrazyNorman@gmail.com> (https://github.com/anprogrammer/)"
-    ],
-    "dependencies": {
-        "audio-streamer": ">= 0.1.0",
-        "fft": "~0.2.1",
-        "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
-        "portfinder": "0.2.1"
-    },
-    "description": "Core native node.js audio functionality, including sound card access and audio streaming",
-    "main": "./node-core-audio",
-    "engines": {
-        "node": ">=0.8.0"
-    },
-    "keywords": [
-        "audio",
-        "dsp",
-        "processing",
-        "portaudio",
-        "sound",
-        "synth",
-        "signal",
-        "streaming",
-        "buffer"
-    ],
-    "licenses": [{
-        "type": "MIT",
-        "url": "http://raw.github.com/ZECTBynmo/node-core-audio/master/LICENSE"
-    }],
-    "repository": {
-        "type": "git",
-        "url": "http://github.com/ZECTBynmo/node-core-audio.git"
+  "name": "node-core-audio",
+  "version": "0.4.1",
+  "author": "Mike Vegeto <michael.vegeto@gmail.com> (http://mikevegeto.com/)",
+  "contributors": [
+    "Marc J. Schmidt <marc@kryn.org> (http://marcjschmidt.de/)",
+    "Jeremiah Senkpiel <fishrock123@rocketmail.com> (http://searchbeam.jit.su/)",
+    "Daniel Church <CrazyNorman@gmail.com> (https://github.com/anprogrammer/)"
+  ],
+  "dependencies": {
+    "audio-streamer": ">= 0.1.0",
+    "fft": "~0.2.1",
+    "nan": "^1.8.4",
+    "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
+    "portfinder": "0.2.1"
+  },
+  "description": "Core native node.js audio functionality, including sound card access and audio streaming",
+  "main": "./node-core-audio",
+  "engines": {
+    "node": ">=0.8.0"
+  },
+  "keywords": [
+    "audio",
+    "dsp",
+    "processing",
+    "portaudio",
+    "sound",
+    "synth",
+    "signal",
+    "streaming",
+    "buffer"
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://raw.github.com/ZECTBynmo/node-core-audio/master/LICENSE"
     }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/ZECTBynmo/node-core-audio.git"
+  }
 }

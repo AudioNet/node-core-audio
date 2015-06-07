@@ -13,22 +13,32 @@ using namespace v8;
 #include "AudioEngine.h"
 #include <stdio.h>
 
-Handle<Value> CreateEngine(const Arguments& args) {
-    HandleScope scope;
-    return scope.Close( Audio::AudioEngine::NewInstance(args) );
+/*
+//Handle<Value> CreateEngine(const Arguments& args) 
+NAN_METHOD(CreateEngine)
+{
+    //HandleScope scope;
+    NanScope();
+    //return scope.Close( Audio::AudioEngine::NewInstance(args) );
+    NanReturnValue(Audio::AudioEngine::NewInstance(args));
 } // end CreateEngine()
+*/
 
 void InitAll(Handle<Object> target) {
     Audio::AudioEngine::Init( target );
 
-    target->Set( String::NewSymbol("createAudioEngine"), FunctionTemplate::New(CreateEngine)->GetFunction() );
+    NODE_SET_METHOD(target, "createAudioEngine", Audio::AudioEngine::NewInstance);
+    //NODE_SET_METHOD(target, "createAudioEngine", CreateEngine);
+    //target->Set( NanNew<String>("createAudioEngine"), CreateEngine);
+    //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(CreateEngine)->GetFunction() );
+    //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(Audio::AudioEngine::NewInstance)->GetFunction() );
     
-    target->Set( String::NewSymbol("sampleFormatFloat32"), Number::New(1) );
-    target->Set( String::NewSymbol("sampleFormatInt32"), Number::New(2) );
-    target->Set( String::NewSymbol("sampleFormatInt24"), Number::New(4) );
-    target->Set( String::NewSymbol("sampleFormatInt16"), Number::New(8) );
-    target->Set( String::NewSymbol("sampleFormatInt8"), Number::New(10) );
-    target->Set( String::NewSymbol("sampleFormatUInt8"), Number::New(20) );
+    target->Set( NanNew<String>("sampleFormatFloat32"), NanNew<Number>(1) );
+    target->Set( NanNew<String>("sampleFormatInt32"), NanNew<Number>(2) );
+    target->Set( NanNew<String>("sampleFormatInt24"), NanNew<Number>(4) );
+    target->Set( NanNew<String>("sampleFormatInt16"), NanNew<Number>(8) );
+    target->Set( NanNew<String>("sampleFormatInt8"), NanNew<Number>(10) );
+    target->Set( NanNew<String>("sampleFormatUInt8"), NanNew<Number>(20) );
 }
 
 NODE_MODULE( NodeCoreAudio, InitAll );
