@@ -415,7 +415,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 			m_bOutputUnderflowed = (error != paNoError);
 		} else {
 			m_bOutputUnderflowed = true;
-#ifdef __WINDOWS__
+#if defined( __WINDOWS__ ) || defined( _WIN32 )
 			Sleep(1);
 #else
 			sleep(1);
