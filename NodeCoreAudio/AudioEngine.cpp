@@ -121,25 +121,23 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Gets options */
-//v8::Handle<v8::Value> Audio::AudioEngine::getOptions(const v8::Arguments& args){
 void Audio::AudioEngine::getOptions(const Nan::FunctionCallbackInfo<v8::Value>& info) {
-//NAN_METHOD(Audio::AudioEngine::getOptions){
 	Local<Object> options = Nan::New<Object>();
 
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
-	options->Set( Nan::New<String>("inputChannels"), Nan::New<Number>(pEngine->m_uInputChannels) );
-	options->Set( Nan::New<String>("outputChannels"), Nan::New<Number>(pEngine->m_uOutputChannels) );
+	Nan::Set( options, Nan::New<String>("inputChannels").ToLocalChecked(), Nan::New<Number>(pEngine->m_uInputChannels) );
+	Nan::Set( options, Nan::New<String>("outputChannels").ToLocalChecked(), Nan::New<Number>(pEngine->m_uOutputChannels) );
 
-	options->Set( Nan::New<String>("inputDevice"), Nan::New<Number>(pEngine->m_uInputDevice) );
-	options->Set( Nan::New<String>("outputDevice"), Nan::New<Number>(pEngine->m_uOutputDevice) );
+	Nan::Set( options, Nan::New<String>("inputDevice").ToLocalChecked(), Nan::New<Number>(pEngine->m_uInputDevice) );
+	Nan::Set( options, Nan::New<String>("outputDevice").ToLocalChecked(), Nan::New<Number>(pEngine->m_uOutputDevice) );
 
-	options->Set( Nan::New<String>("sampleRate"), Nan::New<Number>(pEngine->m_uSampleRate) );
-	options->Set( Nan::New<String>("sampleFormat"), Nan::New<Number>(pEngine->m_uSampleFormat) );
-	options->Set( Nan::New<String>("framesPerBuffer"), Nan::New<Number>(pEngine->m_uSamplesPerBuffer) );
-	options->Set( Nan::New<String>("numBuffers"), Nan::New<Number>(pEngine->m_uNumBuffers) );
-	options->Set( Nan::New<String>("interleaved"), Nan::New<Boolean>(pEngine->m_bInterleaved) );
-	options->Set( Nan::New<String>("useMicrophone"), Nan::New<Boolean>(pEngine->m_bReadMicrophone) );
+	Nan::Set( options, Nan::New<String>("sampleRate").ToLocalChecked(), Nan::New<Number>(pEngine->m_uSampleRate) );
+	Nan::Set( options, Nan::New<String>("sampleFormat").ToLocalChecked(), Nan::New<Number>(pEngine->m_uSampleFormat) );
+	Nan::Set( options, Nan::New<String>("framesPerBuffer").ToLocalChecked(), Nan::New<Number>(pEngine->m_uSamplesPerBuffer) );
+	Nan::Set( options, Nan::New<String>("numBuffers").ToLocalChecked(), Nan::New<Number>(pEngine->m_uNumBuffers) );
+	Nan::Set( options, Nan::New<String>("interleaved").ToLocalChecked(), Nan::New<Boolean>(pEngine->m_bInterleaved) );
+	Nan::Set( options, Nan::New<String>("useMicrophone").ToLocalChecked(), Nan::New<Boolean>(pEngine->m_bReadMicrophone) );
 
 	info.GetReturnValue().Set(options);
 } // end GetOptions
@@ -153,11 +151,11 @@ void Audio::AudioEngine::setOptions(const Nan::FunctionCallbackInfo<v8::Value>& 
 	Local<Object> options;
 
 	if( info.Length() > 0 ) {
-		if( !args[0]->IsObject() ) {
+		if( !info[0]->IsObject() ) {
 			return Nan::ThrowTypeError("First argument should be an object.");
 		}
 
-		options = Local<Object>::Cast( args[0] );
+		options = Local<Object>::Cast( info[0] );
 	} else {
         return Nan::ThrowTypeError("First argument does not exist.");
 	}
@@ -173,26 +171,27 @@ void Audio::AudioEngine::setOptions(const Nan::FunctionCallbackInfo<v8::Value>& 
 /*! Sets the given options and restarts the audio stream if necessary */
 void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	unsigned int oldBufferCount = m_uNumBuffers;
-	if(Nan::HasOwnProperty(options, Nan::New<String>("inputDevice")) )
-		m_uInputDevice = (int)options->Get(Nan::New<String>("inputDevice"))->ToInteger()->Value();
-	if(Nan::HasOwnProperty(options, Nan::New<String>("outputDevice")) )
-		m_uOutputDevice = (int)options->Get(Nan::New<String>("outputDevice"))->ToInteger()->Value();
-	if(Nan::HasOwnProperty(options, Nan::New<String>("inputChannels")) )
-		m_uInputChannels = (int)options->Get(Nan::New<String>("inputChannels"))->ToInteger()->Value();
-	if(Nan::HasOwnProperty(options, Nan::New<String>("outputChannels")) )
-		m_uOutputChannels = (int)options->Get(Nan::New<String>("outputChannels"))->ToInteger()->Value();
-	if(Nan::HasOwnProperty(options, Nan::New<String>("framesPerBuffer")) )
-		m_uSamplesPerBuffer = (int)options->Get(Nan::New<String>("framesPerBuffer"))->ToInteger()->Value();
-	if (Nan::HasOwnProperty(options, Nan::New<String>("numBuffers")) )
-		m_uNumBuffers = (int)options->Get(Nan::New<String>("numBuffers"))->ToInteger()->Value();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("inputDevice").ToLocalChecked()).FromMaybe(false) )
+		m_uInputDevice = Nan::To<int>(Nan::Get(options, Nan::New<String>("inputDevice").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("outputDevice").ToLocalChecked()).FromMaybe(false) )
+		m_uOutputDevice = Nan::To<int>(Nan::Get(options, Nan::New<String>("outputDevice").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("inputChannels").ToLocalChecked()).FromMaybe(false) )
+		m_uInputChannels = Nan::To<int>(Nan::Get(options, Nan::New<String>("inputChannels").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("outputChannels").ToLocalChecked()).FromMaybe(false) )
+	  m_uOutputChannels =
+	    Nan::To<int>(Nan::Get(options, Nan::New<String>("outputChannels").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("framesPerBuffer").ToLocalChecked()).FromMaybe(false) )
+		m_uSamplesPerBuffer = Nan::To<int>(Nan::Get(options, Nan::New<String>("framesPerBuffer").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if (Nan::HasOwnProperty(options, Nan::New<String>("numBuffers").ToLocalChecked()).FromMaybe(false) )
+		m_uNumBuffers = Nan::To<int>(Nan::Get(options, Nan::New<String>("numBuffers").ToLocalChecked()).ToLocalChecked()).FromJust();
 
-	if(Nan::HasOwnProperty(options, Nan::New<String>("interleaved")) )
-		m_bInterleaved = options->Get(Nan::New<String>("interleaved"))->ToBoolean()->Value();
-	if (Nan::HasOwnProperty(options, Nan::New<String>("useMicrophone")) )
-		m_bReadMicrophone = options->Get(Nan::New<String>("useMicrophone"))->ToBoolean()->Value();
+	if(Nan::HasOwnProperty(options, Nan::New<String>("interleaved").ToLocalChecked()).FromMaybe(false) )
+		m_bInterleaved = Nan::To<bool>(Nan::Get(options, Nan::New<String>("interleaved").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if (Nan::HasOwnProperty(options, Nan::New<String>("useMicrophone").ToLocalChecked()).FromMaybe(false) )
+		m_bReadMicrophone = Nan::To<bool>(Nan::Get(options, Nan::New<String>("useMicrophone").ToLocalChecked()).ToLocalChecked()).FromJust();;
 
-	if(Nan::HasOwnProperty(options, Nan::New<String>("sampleFormat")) ) {
-		switch( options->Get(Nan::New<String>("sampleFormat"))->ToInteger()->Value() ){
+	if(Nan::HasOwnProperty(options, Nan::New<String>("sampleFormat").ToLocalChecked()).FromMaybe(false) ) {
+		switch(Nan::To<int>(Nan::Get(options, Nan::New<String>("sampleFormat").ToLocalChecked()).ToLocalChecked()).FromJust()){
 			case 0x01: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
 			case 0x02: m_uSampleFormat = paInt32; m_uSampleSize = 4; break;
 			case 0x04: m_uSampleFormat = paInt24; m_uSampleSize = 3; break;
@@ -246,10 +245,7 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a v8 array filled with input samples */
 Handle<Array> Audio::AudioEngine::getInputBuffer() {
-//NAN_METHOD(Audio::AudioEngine::getInputBuffer){
-    NanEscapableScope();
-    //NanScope();
-	//HandleScope scope;
+  Nan::EscapableHandleScope scope;
 
 	if( m_bInterleaved ) {
 		m_hInputBuffer = Nan::New<Array>( m_uInputChannels * m_uSamplesPerBuffer );
@@ -270,16 +266,14 @@ Handle<Array> Audio::AudioEngine::getInputBuffer() {
 		}
 	}
 
-	return NanEscapeScope( m_hInputBuffer );
+	return scope.Escape( m_hInputBuffer );
 } // end AudioEngine::getInputBuffer()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a sound card sample converted to a v8 Number */
 Handle<Number> Audio::AudioEngine::getSample( int position ) {
-//NAN_METHOD(Audio::AudioEngine::getSample){
-    NanEscapableScope();
-	//HandleScope scope;
+  Nan::EscapableHandleScope scope;
 
 	Handle<Number> sample;
 
@@ -310,7 +304,7 @@ Handle<Number> Audio::AudioEngine::getSample( int position ) {
 		break;
 	}
 
-    return NanEscapeScope(sample);
+    return scope.Escape(sample);
 } // end AudioEngine::getSample()
 
 
@@ -424,7 +418,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	// Prepare constructor template
 	Local<FunctionTemplate> functionTemplate = Nan::New<FunctionTemplate> (Audio::AudioEngine::New );
-	functionTemplate->SetClassName( Nan::New<String>("AudioEngine") );
+	functionTemplate->SetClassName( Nan::New<String>("AudioEngine").ToLocalChecked() );
 	functionTemplate->InstanceTemplate()->SetInternalFieldCount( 1 );
 
 
@@ -435,9 +429,9 @@ void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isActive"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getDeviceName"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getNumDevices"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getNumDevices)->GetFunction() );
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "isActive", Audio::AudioEngine::isActive);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getDeviceName", Audio::AudioEngine::getDeviceName);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getNumDevices", Audio::AudioEngine::getNumDevices);
+    Nan::SetPrototypeMethod(functionTemplate, "isActive", Audio::AudioEngine::isActive);
+    Nan::SetPrototypeMethod(functionTemplate, "getDeviceName", Audio::AudioEngine::getDeviceName);
+    Nan::SetPrototypeMethod(functionTemplate, "getNumDevices", Audio::AudioEngine::getNumDevices);
 
 	// Set
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("setOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::setOptions)->GetFunction() );
@@ -445,114 +439,110 @@ void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("write"), Nan::New<FunctionTemplate>(Audio::AudioEngine::write)->GetFunction() );
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("read"), Nan::New<FunctionTemplate>(Audio::AudioEngine::read)->GetFunction() );
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isBufferEmpty"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "setOptions", Audio::AudioEngine::setOptions);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "getOptions", Audio::AudioEngine::getOptions);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "write", Audio::AudioEngine::write);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "read", Audio::AudioEngine::read);
-    NODE_SET_PROTOTYPE_METHOD(functionTemplate, "isBufferEmpty", Audio::AudioEngine::isBufferEmpty);
+    Nan::SetPrototypeMethod(functionTemplate, "setOptions", Audio::AudioEngine::setOptions);
+    Nan::SetPrototypeMethod(functionTemplate, "getOptions", Audio::AudioEngine::getOptions);
+    Nan::SetPrototypeMethod(functionTemplate, "write", Audio::AudioEngine::write);
+    Nan::SetPrototypeMethod(functionTemplate, "read", Audio::AudioEngine::read);
+    Nan::SetPrototypeMethod(functionTemplate, "isBufferEmpty", Audio::AudioEngine::isBufferEmpty);
 
 	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
     //Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(EOLFinder::New);
-    NanAssignPersistent(constructor, functionTemplate->GetFunction());
+//    NanAssignPersistent(constructor, functionTemplate->GetFunction());
+    constructor.Reset(Nan::GetFunction(functionTemplate));
 } // end AudioEngine::Init()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Create a new instance of the audio engine */
-//v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& args) {
-
-NAN_METHOD(Audio::AudioEngine::NewInstance){
+//v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& info) {
+void Audio::AudioEngine::NewInstance(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	unsigned argc = args.Length();
+	unsigned argc = info.Length();
 
 	if( argc > 2 )
 		argc = 2;
 
 	Handle<Value>* argv = new Handle<Value>[argc];
 
-	argv[0] = args[0];
+	argv[0] = info[0];
 	if( argc > 1 )
-		argv[1] = args[1];
+		argv[1] = info[1];
 
 	//Local<Object> instance = constructor->NewInstance( argc, argv );
 	Local<Object> instance = Nan::New(constructor)->NewInstance(argc, argv);
 	//Local<Object> instance = constructor->NewInstance(argc, argv);
 
-	Nan::ReturnValue( instance );
+	info.GetReturnValue().Set( instance );
 } // end AudioEngine::NewInstance()
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Create a v8 object */
-//v8::Handle<v8::Value> Audio::AudioEngine::New( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::New){
+void Audio::AudioEngine::New(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
 	Local<Object> options;
 
-	if( args.Length() > 0 ) {
-		if( !args[0]->IsObject() )
+	if( info.Length() > 0 ) {
+		if( !info[0]->IsObject() )
             return Nan::ThrowTypeError("First argument must be an object.");
 		else
-			options = Local<Object>::Cast( args[0] );
+			options = Local<Object>::Cast( info[0] );
 	} else {
 		options = Nan::New<Object>();
 	}
 
 	AudioEngine* pEngine = new AudioEngine( options );
-	pEngine->Wrap( args.This() );
+	pEngine->Wrap( info.This() );
 
-	Nan::ReturnValue( args.This() );
+	info.GetReturnValue().Set( info.This() );
 } // end AudioEngine::New()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Write samples to the current audio device */
-//v8::Handle<v8::Value> Audio::AudioEngine::write( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::write){
+void Audio::AudioEngine::write(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
-	if (args.Length() > 1 || !args[0]->IsArray()){
+	if (info.Length() > 1 || !info[0]->IsArray()){
         return Nan::ThrowTypeError("First argument should be an array.");
 	}
 
 	uv_mutex_lock( &pEngine->m_mutex );
-	pEngine->queueOutputBuffer( Local<Array>::Cast(args[0]) );
+	pEngine->queueOutputBuffer( Local<Array>::Cast(info[0]) );
 	uv_mutex_unlock( &pEngine->m_mutex );
 
 	Handle<Boolean> result = Nan::New<Boolean>( false );
 
-	Nan::ReturnValue( result );
+	info.GetReturnValue().Set( result );
 } // end AudioEngine::Write()
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Checks if the current audio buffer has been fed to Port Audio */
-//v8::Handle<v8::Value> Audio::AudioEngine::isBufferEmpty( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::isBufferEmpty){
+void Audio::AudioEngine::isBufferEmpty(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
 	uv_mutex_lock( &pEngine->m_mutex );
 	Handle<Boolean> isEmpty = Nan::New<Boolean>(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
 	uv_mutex_unlock( &pEngine->m_mutex );
-	Nan::ReturnValue( isEmpty );
+	info.GetReturnValue().Set( isEmpty );
 } // end AudioEngine::isBufferEmpty()
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Read samples from the current audio device */
-//v8::Handle<v8::Value> Audio::AudioEngine::read( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::read){
+void Audio::AudioEngine::read(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
 	if (pEngine->m_bReadMicrophone) {
 		Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
@@ -560,55 +550,52 @@ NAN_METHOD(Audio::AudioEngine::read){
 
 	Handle<Array> input = pEngine->getInputBuffer();
 
-	Nan::ReturnValue( input );
+	info.GetReturnValue().Set( input );
 } // end AudioEngine::Read()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns whether the PortAudio stream is active */
-//v8::Handle<v8::Value> Audio::AudioEngine::isActive( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::isActive){
+void Audio::AudioEngine::isActive(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( args.This() );
+	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
 	if( Pa_IsStreamActive(pEngine->m_pPaStream) )
-		Nan::ReturnValue( Nan::New<Boolean>(true) );
+		info.GetReturnValue().Set( Nan::New<Boolean>(true) );
 	else
-		Nan::ReturnValue( Nan::New<Boolean>(false) );
+		info.GetReturnValue().Set( Nan::New<Boolean>(false) );
 } // end AudioEngine::IsActive()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Get the name of an audio device with a given ID number */
-//v8::Handle<v8::Value> Audio::AudioEngine::getDeviceName( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::getDeviceName){
+void Audio::AudioEngine::getDeviceName(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
-	if( !args[0]->IsNumber() ) {
+	if( !info[0]->IsNumber() ) {
 		return  Nan::ThrowTypeError("getDeviceName() requires a device index");
 	}
 
-	Local<Number> deviceIndex = Local<Number>::Cast( args[0] );
+	Local<Number> deviceIndex = Local<Number>::Cast( info[0] );
 
 	const PaDeviceInfo* pDeviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
 
-	Nan::ReturnValue( Nan::New<String>(pDeviceInfo->name) );
+	info.GetReturnValue().Set( Nan::New<String>(pDeviceInfo->name).ToLocalChecked() );
 } // end AudioEngine::GetDeviceName()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Get the number of available devices */
-//v8::Handle<v8::Value> Audio::AudioEngine::getNumDevices( const v8::Arguments& args ) {
-NAN_METHOD(Audio::AudioEngine::getNumDevices){
+void Audio::AudioEngine::getNumDevices(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     Nan::HandleScope scope;
 	//HandleScope scope;
 
 	int deviceCount = Pa_GetDeviceCount();
 
-	Nan::ReturnValue( Nan::New<Number>(deviceCount) );
+	info.GetReturnValue().Set( Nan::New<Number>(deviceCount) );
 } // end AudioEngine::GetNumDevices()
 
 
