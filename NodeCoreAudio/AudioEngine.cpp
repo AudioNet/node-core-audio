@@ -10,7 +10,6 @@
 #include "portaudio.h"
 #include <v8.h>
 #include <uv.h>
-#include <node_internals.h>
 #include <node_object_wrap.h>
 #include <stdlib.h>
 
