@@ -416,6 +416,9 @@ void Audio::AudioEngine::RunAudioLoop(){
 //////////////////////////////////////////////////////////////////////////////
 /*! Initialize our node object */
 void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
+
+  Isolate* isolate = target->GetIsolate();
+
 	// Prepare constructor template
 	Local<FunctionTemplate> functionTemplate = Nan::New<FunctionTemplate> (Audio::AudioEngine::New );
 	functionTemplate->SetClassName( Nan::New<String>("AudioEngine").ToLocalChecked() );
@@ -448,7 +451,7 @@ void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
     //Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(EOLFinder::New);
 //    NanAssignPersistent(constructor, functionTemplate->GetFunction());
-    constructor.Reset(Nan::GetFunction(functionTemplate));
+    constructor.Reset(isolate, functionTemplate->GetFunction());
 } // end AudioEngine::Init()
 
 

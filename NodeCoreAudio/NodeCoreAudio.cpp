@@ -27,18 +27,18 @@ NAN_METHOD(CreateEngine)
 void InitAll(Handle<Object> target) {
     Audio::AudioEngine::Init( target );
 
-    NODE_SET_METHOD(target, "createAudioEngine", Audio::AudioEngine::NewInstance);
+    Nan::SetMethod(target, "createAudioEngine", Audio::AudioEngine::NewInstance);
     //NODE_SET_METHOD(target, "createAudioEngine", CreateEngine);
     //target->Set( NanNew<String>("createAudioEngine"), CreateEngine);
     //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(CreateEngine)->GetFunction() );
     //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(Audio::AudioEngine::NewInstance)->GetFunction() );
     
-    target->Set( NanNew<String>("sampleFormatFloat32"), NanNew<Number>(1) );
-    target->Set( NanNew<String>("sampleFormatInt32"), NanNew<Number>(2) );
-    target->Set( NanNew<String>("sampleFormatInt24"), NanNew<Number>(4) );
-    target->Set( NanNew<String>("sampleFormatInt16"), NanNew<Number>(8) );
-    target->Set( NanNew<String>("sampleFormatInt8"), NanNew<Number>(10) );
-    target->Set( NanNew<String>("sampleFormatUInt8"), NanNew<Number>(20) );
+    target->Set( Nan::New<String>("sampleFormatFloat32").ToLocalChecked(), Nan::New<Number>(1));
+    target->Set( Nan::New<String>("sampleFormatInt32").ToLocalChecked(), Nan::New<Number>(2) );
+    target->Set( Nan::New<String>("sampleFormatInt24").ToLocalChecked(), Nan::New<Number>(4) );
+    target->Set( Nan::New<String>("sampleFormatInt16").ToLocalChecked(), Nan::New<Number>(8) );
+    target->Set( Nan::New<String>("sampleFormatInt8").ToLocalChecked(), Nan::New<Number>(10) );
+    target->Set( Nan::New<String>("sampleFormatUInt8").ToLocalChecked(), Nan::New<Number>(20) );
 }
 
 NODE_MODULE( NodeCoreAudio, InitAll );
