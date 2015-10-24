@@ -16,8 +16,11 @@
   },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
+  "scripts": {
+    "test": "node test/test.js"
+  },
   "engines": {
-    "node": ">=0.8.0"
+    "node": ">=0.12.0"
   },
   "keywords": [
     "audio",

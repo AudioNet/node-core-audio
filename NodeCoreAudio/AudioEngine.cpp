@@ -10,6 +10,7 @@
 #include "portaudio.h"
 #include <v8.h>
 #include <uv.h>
+#include <node.h>
 #include <node_object_wrap.h>
 #include <stdlib.h>
 
@@ -243,7 +244,7 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a v8 array filled with input samples */
-Handle<Array> Audio::AudioEngine::getInputBuffer() {
+Local<Array> Audio::AudioEngine::getInputBuffer() {
   Nan::EscapableHandleScope scope;
 
 	if( m_bInterleaved ) {
@@ -274,7 +275,7 @@ Handle<Array> Audio::AudioEngine::getInputBuffer() {
 Handle<Number> Audio::AudioEngine::getSample( int position ) {
   Nan::EscapableHandleScope scope;
 
-	Handle<Number> sample;
+	Local<Number> sample;
 
 	switch( m_uSampleFormat ) {
 	case paFloat32: {
@@ -357,12 +358,12 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 			return;
 		}
 
-		Handle<Array> item;
+		Local<Array> item;
 
 		for( int iChannel=0; iChannel<m_uOutputChannels; ++iChannel ) {
 			for( int iSample=0; iSample<m_uSamplesPerBuffer; ++iSample ) {
 
-				item = Handle<Array>::Cast( result->Get(iChannel) );
+				item = Local<Array>::Cast( result->Get(iChannel) );
 				if( item->IsArray() ) {
 					if( item->Length() > m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] )
 						m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = item->Length();
@@ -414,9 +415,7 @@ void Audio::AudioEngine::RunAudioLoop(){
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Initialize our node object */
-void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
-
-  Isolate* isolate = target->GetIsolate();
+NAN_MODULE_INIT(Audio::AudioEngine::Init) {
 
 	// Prepare constructor template
 	Local<FunctionTemplate> functionTemplate = Nan::New<FunctionTemplate> (Audio::AudioEngine::New );
@@ -450,7 +449,7 @@ void Audio::AudioEngine::Init( v8::Handle<v8::Object> target ) {
 	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
     //Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(EOLFinder::New);
 //    NanAssignPersistent(constructor, functionTemplate->GetFunction());
-    constructor.Reset(isolate, functionTemplate->GetFunction());
+    constructor.Reset(Isolate::GetCurrent(), functionTemplate->GetFunction());
 } // end AudioEngine::Init()
 
 
@@ -519,9 +518,7 @@ void Audio::AudioEngine::write(const Nan::FunctionCallbackInfo<v8::Value>& info)
 	pEngine->queueOutputBuffer( Local<Array>::Cast(info[0]) );
 	uv_mutex_unlock( &pEngine->m_mutex );
 
-	Handle<Boolean> result = Nan::New<Boolean>( false );
-
-	info.GetReturnValue().Set( result );
+	info.GetReturnValue().Set( false );
 } // end AudioEngine::Write()
 
 //////////////////////////////////////////////////////////////////////////////
@@ -533,7 +530,7 @@ void Audio::AudioEngine::isBufferEmpty(const Nan::FunctionCallbackInfo<v8::Value
 	AudioEngine* pEngine = AudioEngine::Unwrap<AudioEngine>( info.This() );
 
 	uv_mutex_lock( &pEngine->m_mutex );
-	Handle<Boolean> isEmpty = Nan::New<Boolean>(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
+	Local<Boolean> isEmpty = Nan::New<Boolean>(pEngine->m_uNumCachedOutputSamples[pEngine->m_uCurrentWriteBuffer] == 0);
 	uv_mutex_unlock( &pEngine->m_mutex );
 	info.GetReturnValue().Set( isEmpty );
 } // end AudioEngine::isBufferEmpty()
@@ -550,7 +547,7 @@ void Audio::AudioEngine::read(const Nan::FunctionCallbackInfo<v8::Value>& info) 
 		Pa_ReadStream( pEngine->m_pPaStream, pEngine->m_cachedInputSampleBlock, pEngine->m_uSamplesPerBuffer );
 	}
 
-	Handle<Array> input = pEngine->getInputBuffer();
+	Local<Array> input = pEngine->getInputBuffer();
 
 	info.GetReturnValue().Set( input );
 } // end AudioEngine::Read()

@@ -78,14 +78,14 @@ namespace Audio {
 		void queueOutputBuffer( Handle<Array> result );			//!< Queues up an array to be sent to the sound card
 		void setSample( int position, Handle<Value> sample );	//!< Sets a sample in the queued output buffer
 
-		Handle<Array> getInputBuffer();							//!< Returns a v8 array filled with input samples
+		Local<Array> getInputBuffer();							//!< Returns a v8 array filled with input samples
 		Handle<Number> getSample( int position );				//!< Returns a sound card sample converted to a v8 Number
 
 		PaStream *m_pPaStream;				//!< The PortAudio stream object
 		PaStreamParameters m_inputParams,	//!< PortAudio stream parameters
 						   m_outputParams;
 
-		Handle<Array> m_hInputBuffer;		//!< Our pre-allocated input buffer
+		Local<Array> m_hInputBuffer;		//!< Our pre-allocated input buffer
 
 		uv_thread_t ptStreamThread,			//!< Our stream thread
 					jsAudioThread;			//!< Our JavaScript Audio thread
