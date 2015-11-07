@@ -10,14 +10,17 @@
   "dependencies": {
     "audio-streamer": ">= 0.1.0",
     "fft": "~0.2.1",
-    "nan": "^1.8.4",
+    "nan": "^2.1.0",
     "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
     "portfinder": "0.2.1"
   },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
   "main": "./node-core-audio",
+  "scripts": {
+    "test": "node test/test.js"
+  },
   "engines": {
-    "node": ">=0.8.0"
+    "node": ">=0.12.0"
   },
   "keywords": [
     "audio",
