@@ -178,19 +178,17 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	if(Nan::HasOwnProperty(options, Nan::New<String>("inputChannels").ToLocalChecked()).FromMaybe(false) )
 		m_uInputChannels = Nan::To<int>(Nan::Get(options, Nan::New<String>("inputChannels").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if(Nan::HasOwnProperty(options, Nan::New<String>("outputChannels").ToLocalChecked()).FromMaybe(false) )
-	  m_uOutputChannels =
-	    Nan::To<int>(Nan::Get(options, Nan::New<String>("outputChannels").ToLocalChecked()).ToLocalChecked()).FromJust();
+	  m_uOutputChannels = Nan::To<int>(Nan::Get(options, Nan::New<String>("outputChannels").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if(Nan::HasOwnProperty(options, Nan::New<String>("framesPerBuffer").ToLocalChecked()).FromMaybe(false) )
 		m_uSamplesPerBuffer = Nan::To<int>(Nan::Get(options, Nan::New<String>("framesPerBuffer").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if (Nan::HasOwnProperty(options, Nan::New<String>("numBuffers").ToLocalChecked()).FromMaybe(false) )
 		m_uNumBuffers = Nan::To<int>(Nan::Get(options, Nan::New<String>("numBuffers").ToLocalChecked()).ToLocalChecked()).FromJust();
-
 	if(Nan::HasOwnProperty(options, Nan::New<String>("interleaved").ToLocalChecked()).FromMaybe(false) )
 		m_bInterleaved = Nan::To<bool>(Nan::Get(options, Nan::New<String>("interleaved").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if (Nan::HasOwnProperty(options, Nan::New<String>("useMicrophone").ToLocalChecked()).FromMaybe(false) )
-		m_bReadMicrophone = Nan::To<bool>(Nan::Get(options, Nan::New<String>("useMicrophone").ToLocalChecked()).ToLocalChecked()).FromJust();;
-	if( options->HasOwnProperty(NanNew<String>("sampleRate")) )
-		m_uSampleRate = (int)options->Get(NanNew<String>("sampleRate"))->ToInteger()->Value();
+		m_bReadMicrophone = Nan::To<bool>(Nan::Get(options, Nan::New<String>("useMicrophone").ToLocalChecked()).ToLocalChecked()).FromJust();
+	if (Nan::HasOwnProperty(options, Nan::New<String>("sampleRate").ToLocalChecked()).FromMaybe(false) )
+		m_uSampleRate = Nan::To<bool>(Nan::Get(options, Nan::New<String>("sampleRate").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if(Nan::HasOwnProperty(options, Nan::New<String>("sampleFormat").ToLocalChecked()).FromMaybe(false) ) {
 		switch(Nan::To<int>(Nan::Get(options, Nan::New<String>("sampleFormat").ToLocalChecked()).ToLocalChecked()).FromJust()){
 			case 0x01: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
@@ -426,7 +424,7 @@ NAN_MODULE_INIT(Audio::AudioEngine::Init) {
 
     //Local<FunctionTemplate> constructorHandle = Nan::New(constructor);
     //target->Set(Nan::New<String>("AudioEngine"), functionTemplate->GetFunction());
-	
+
     // Get
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isActive"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
 	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getDeviceName"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
