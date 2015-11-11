@@ -33,8 +33,7 @@ static void do_work( void* arg ) {
 Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	m_uSampleSize(4),
 	m_pIsolate(Isolate::GetCurrent()),
-	m_pLocker(new Locker(Isolate::GetCurrent())),
-	m_bOutputIsEmpty(true) {
+	m_pLocker(new Locker(Isolate::GetCurrent())) {
 
 	PaError openStreamErr;
 	m_pPaStream = NULL;
@@ -217,7 +216,7 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	if( m_cachedInputSampleBlock != NULL )
 		free( m_cachedInputSampleBlock );
 	if( m_cachedOutputSampleBlock != NULL ) {
-		for (int i = 0; i < oldBufferCount; i++) {
+		for (unsigned int i = 0; i < oldBufferCount; i++) {
 			if ( m_cachedOutputSampleBlock[i] != NULL ) {
 				free(m_cachedOutputSampleBlock[i]);
 			}
@@ -380,7 +379,7 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 /*! Run the main blocking audio loop */
 void Audio::AudioEngine::RunAudioLoop(){
 
-	PaError error;
+	PaError error = 0;
 
 	assert( m_pPaStream );
 

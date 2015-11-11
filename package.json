@@ -33,12 +33,7 @@
     "streaming",
     "buffer"
   ],
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://raw.github.com/ZECTBynmo/node-core-audio/master/LICENSE"
-    }
-  ],
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "http://github.com/ZECTBynmo/node-core-audio.git"
