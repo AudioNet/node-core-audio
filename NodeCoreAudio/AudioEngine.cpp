@@ -187,7 +187,7 @@ void Audio::AudioEngine::applyOptions( Local<Object> options ) {
 	if (Nan::HasOwnProperty(options, Nan::New<String>("useMicrophone").ToLocalChecked()).FromMaybe(false) )
 		m_bReadMicrophone = Nan::To<bool>(Nan::Get(options, Nan::New<String>("useMicrophone").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if (Nan::HasOwnProperty(options, Nan::New<String>("sampleRate").ToLocalChecked()).FromMaybe(false) )
-		m_uSampleRate = Nan::To<bool>(Nan::Get(options, Nan::New<String>("sampleRate").ToLocalChecked()).ToLocalChecked()).FromJust();
+		m_uSampleRate = Nan::To<int>(Nan::Get(options, Nan::New<String>("sampleRate").ToLocalChecked()).ToLocalChecked()).FromJust();
 	if(Nan::HasOwnProperty(options, Nan::New<String>("sampleFormat").ToLocalChecked()).FromMaybe(false) ) {
 		switch(Nan::To<int>(Nan::Get(options, Nan::New<String>("sampleFormat").ToLocalChecked()).ToLocalChecked()).FromJust()){
 			case 0x01: m_uSampleFormat = paFloat32; m_uSampleSize = 4; break;
