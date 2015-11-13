@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // AudioEngine.cpp: Core audio functionality
-// 
+//
 //////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,10 +41,10 @@ namespace Audio {
 		~AudioEngine();		//!< OOL Destructor
 
 	private:
-		static v8::Persistent<v8::Function> constructor;                
+		static v8::Persistent<v8::Function> constructor;
 		//static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
         static NAN_METHOD(New);
-		
+
 		//! Returns whether the PortAudio stream is active
 		//static v8::Handle<v8::Value> isActive( const v8::Arguments& args );
         static NAN_METHOD(isActive);
@@ -64,7 +64,7 @@ namespace Audio {
         static NAN_METHOD(read);
 		//static v8::Handle<v8::Value> isBufferEmpty( const v8::Arguments& args );	//!< Returns whether the data buffer is empty
         static NAN_METHOD(isBufferEmpty);
-		
+
 		//static v8::Handle<v8::Value> setOptions( const v8::Arguments& args );	//!< Set options, restarts audio stream
         static NAN_METHOD(setOptions);
 		//static v8::Handle<v8::Value> getOptions( const v8::Arguments& args );	//!< Gets options
@@ -87,8 +87,7 @@ namespace Audio {
 
 		Local<Array> m_hInputBuffer;		//!< Our pre-allocated input buffer
 
-		uv_thread_t ptStreamThread,			//!< Our stream thread
-					jsAudioThread;			//!< Our JavaScript Audio thread
+		uv_thread_t ptStreamThread;			//!< Our stream thread
 
 		uv_mutex_t m_mutex;					//!< A mutex for transferring data between the DSP and UI threads
 
@@ -107,7 +106,6 @@ namespace Audio {
 
 		bool m_bInputOverflowed,			//!< Set when our buffers have overflowed
 			 m_bOutputUnderflowed,
-			 m_bOutputIsEmpty,
 			 m_bReadMicrophone,
 			 m_bInterleaved;				//!< Set when we're processing interleaved buffers
 
@@ -120,6 +118,5 @@ namespace Audio {
 		Locker* m_pLocker;
 
 	}; // end class AudioEngine
-	
-} // end namespace Audio
 
+} // end namespace Audio
