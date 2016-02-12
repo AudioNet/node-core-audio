@@ -6,7 +6,7 @@
 /* ----------------------------------------------------------------------
 													Object Structures
 -------------------------------------------------------------------------
-	
+
 */
 //////////////////////////////////////////////////////////////////////////
 // Node.js Exports
@@ -24,8 +24,8 @@ var FFT = require("fft");
 //////////////////////////////////////////////////////////////////////////
 // Namespace (lol)
 var SHOW_DEBUG_PRINTS = true;
-var MAX_SUPPORTED_CHANNELS = 6;													// We need to allocate our process audio for the max channels, 
-																				// so we have to set some reasonable limit																				
+var MAX_SUPPORTED_CHANNELS = 6;													// We need to allocate our process audio for the max channels,
+																				// so we have to set some reasonable limit
 var log = function( a ) { if(SHOW_DEBUG_PRINTS) console.log(a); };				// A log function we can turn off
 var exists = function(a) { return typeof(a) == "undefined" ? false : true; };	// Check whether a variable exists
 
@@ -41,23 +41,23 @@ function AudioEngine( options ) {
 		framesPerBuffer: 1024,
 		useMicrophone: true
 	};
-	
+
     this.options = options || defaultOptions;
 	this.audioEngine = audioEngineImpl.createAudioEngine( this.options );
 	this.options = this.audioEngine.getOptions();
 
 	this.audioStreamer;
-	
+
 	this.processingCallbacks = [];
 	this.uiUpdateCallbacks = [];
-	
+
 	this.outputBuffer = [];
 	this.tempBuffer = [];
 	this.processBuffer = [];
 
 	this.fft = new FFT.complex( this.audioEngine.getOptions().framesPerBuffer, false );
 	this.fftBuffer = [];
-	
+
 	var _this = this;
 
 	function validateOutputBufferStructure( buffer ) {
@@ -65,7 +65,7 @@ function AudioEngine( options ) {
 			console.log( "Audio processing function didn't return an output buffer" );
 			return false;
 		}
-		
+
 		if( !_this.audioEngine.getOptions().interleaved ) {
 
 			if( buffer.length > _this.options.inputChannels ) {
@@ -76,7 +76,7 @@ function AudioEngine( options ) {
 				return false;
 			}
 
-			if( typeof(buffer[0]) != "object" ) { 
+			if( typeof(buffer[0]) != "object" ) {
 				console.log( "Output buffer not setup correctly, buffer[0] isn't an array" );
 				return false;
 			}
@@ -99,8 +99,8 @@ function AudioEngine( options ) {
 	for( var iChannel = 0; iChannel<MAX_SUPPORTED_CHANNELS; ++iChannel ) {
 		this.processBuffer[iChannel] = [];
 	}
-	
-	// Start polling the audio engine for data as fast as we can	
+
+	// Start polling the audio engine for data as fast as we can
 	var _this = this;
 
 	this.processAudio = this.getProcessAudio();
@@ -114,7 +114,7 @@ function AudioEngine( options ) {
 
 			if( validateOutputBufferStructure(outputBuffer) )
 				_this.audioEngine.write( outputBuffer );
-			
+
 			// Call our UI updates now that all the DSP work has been done
 			for( var iUpdate=0; iUpdate < _this.uiUpdateCallbacks.length; ++iUpdate ) {
 				_this.uiUpdateCallbacks[iUpdate]();
@@ -132,15 +132,15 @@ AudioEngine.prototype.getProcessAudio = function() {
 	var options = this.audioEngine.getOptions(),
 		numChannels = options.inputChannels,
 		fftBuffer = this.fftBuffer;
-	
-	var processAudio = function( inputBuffer ) {	
+
+	var processAudio = function( inputBuffer ) {
 
 		// If we don't have any processing callbacks, just get out
 		if( _this.processingCallbacks.length == 0 )
 			return inputBuffer;
-			
+
 		var processBuffer = inputBuffer;
-			
+
 		//if( !_this.options.interleaved )
 		//	deInterleave( inputBuffer, processBuffer, _this.options.framesPerBuffer, numChannels );
 
@@ -148,22 +148,22 @@ AudioEngine.prototype.getProcessAudio = function() {
 		for( var iCallback = 0; iCallback < _this.processingCallbacks.length; ++iCallback ) {
 			processBuffer = _this.processingCallbacks[iCallback]( processBuffer );
 		} // end for each callback
-		
-		
+
+
 		if( typeof(_this.audioStreamer) != "undefined" ) {
 			_this.audioStreamer.streamAudio( processBuffer, _this.options.framesPerBuffer, numChannels );
 		}
-		
+
 		// Return our output audio to the sound card
 		return processBuffer;
 	} // end processAudio()
-	
+
 	return processAudio;
 } // end AudioEngine.getProcessAudio()
 
 
 //////////////////////////////////////////////////////////////////////////
-// Get the engine's options 
+// Get the engine's options
 AudioEngine.prototype.getOptions = function() {
 	this.options = this.audioEngine.getOptions();
 	return this.options;
@@ -171,7 +171,7 @@ AudioEngine.prototype.getOptions = function() {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Get the engine's options 
+// Get the engine's options
 AudioEngine.prototype.setOptions = function( options ) {
 	this.audioEngine.setOptions( options );
 	this.options = this.audioEngine.getOptions();
@@ -179,14 +179,7 @@ AudioEngine.prototype.setOptions = function( options ) {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Add a processing callback 
-AudioEngine.prototype.createAudioHub = function( port ) {
-	this.audioStreamer = require("audio-streamer").createNewAudioStreamer( port );
-} // end AudioEngine.createAudiohub()
-
-
-//////////////////////////////////////////////////////////////////////////
-// Add a processing callback 
+// Add a processing callback
 AudioEngine.prototype.addAudioCallback = function( callback ) {
 	this.processingCallbacks.push( callback );
 } // end AudioEngine.addAudioCallback()
@@ -200,35 +193,35 @@ AudioEngine.prototype.addUpdateCallback = function( callback ) {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Returns whether the audio engine is active 
+// Returns whether the audio engine is active
 AudioEngine.prototype.isActive = function() {
 	return this.audioEngine.isActive();
 } // end AudioEngine.isActive()
 
 
 //////////////////////////////////////////////////////////////////////////
-// Returns the sample rate of the audio engine 
+// Returns the sample rate of the audio engine
 AudioEngine.prototype.getSampleRate = function() {
 	return this.audioEngine.getSampleRate();
 } // end AudioEngine.getSampleRate()
 
 
 //////////////////////////////////////////////////////////////////////////
-// Returns the index of the input audio device 
+// Returns the index of the input audio device
 AudioEngine.prototype.getInputDeviceIndex = function() {
 	return this.audioEngine.getInputDeviceIndex();
 } // end AudioEngine.getInputDeviceIndex()
 
 
 //////////////////////////////////////////////////////////////////////////
-// Returns the index of the output audio device 
+// Returns the index of the output audio device
 AudioEngine.prototype.getOutputDeviceIndex = function() {
 	return this.audioEngine.getOutputDeviceIndex();
 } // end AudioEngine.getOutputDeviceIndex()
 
 
 //////////////////////////////////////////////////////////////////////////
-// Returns the name of a given device 
+// Returns the name of a given device
 AudioEngine.prototype.getDeviceName = function( deviceId ) {
 	return this.audioEngine.getDeviceName( deviceId );
 } // end AudioEngine.getDeviceName()
@@ -270,7 +263,7 @@ AudioEngine.prototype.getNumOutputChannels = function() {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Read audio samples from the sound card 
+// Read audio samples from the sound card
 AudioEngine.prototype.read = function() {
 	return this.audioEngine.read();
 } // end AudioEngine.read()
@@ -302,7 +295,7 @@ function deInterleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChanne
 	for( var iChannel = 0; iChannel < numChannels; iChannel += numChannels ) {
 		for( var iSample = 0; iSample < numSamplesPerBuffer; ++iSample ) {
 			outputBuffer[iChannel][iSample] = inputBuffer[iSample + iChannel];
-		} // end for each sample		
+		} // end for each sample
 	} // end for each channel
 } // end deInterleave()
 
@@ -328,7 +321,7 @@ function interleave( inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels
 
 		for( var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels ) {
 			outputBuffer[iSample + iChannel] = inputBuffer[iChannel][iSample];
-		} // end for each sample position		
-	} // end for each channel	
+		} // end for each sample position
+	} // end for each channel
 
 } // end interleave()
