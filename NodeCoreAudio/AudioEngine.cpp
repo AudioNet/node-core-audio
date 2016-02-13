@@ -8,6 +8,7 @@
 
 #include "AudioEngine.h"
 #include "portaudio.h"
+#include "pa_asio.h"
 #include <v8.h>
 #include <uv.h>
 #include <node.h>
