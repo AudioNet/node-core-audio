@@ -34,5 +34,10 @@
   "repository": {
     "type": "git",
     "url": "http://github.com/ZECTBynmo/node-core-audio.git"
+  },
+  "standard": {
+    "global": [
+      "newAudioEngine"
+    ]
   }
 }
