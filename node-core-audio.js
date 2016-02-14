@@ -1,5 +1,7 @@
 // Exports
-var globalNamespace = {}(function (exports) {
+var globalNamespace = {}
+
+;(function (exports) {
   exports.createNewAudioEngine = function (options) {
     var newAudioEngine = new AudioEngine(options)
     return newAudioEngine
