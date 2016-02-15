@@ -8,7 +8,6 @@
     "Daniel Church <CrazyNorman@gmail.com> (https://github.com/anprogrammer/)"
   ],
   "dependencies": {
-    "fft": "~0.2.1",
     "nan": "^2.1.0"
   },
   "description": "Core native node.js audio functionality, including sound card access and audio streaming",
@@ -34,10 +33,5 @@
   "repository": {
     "type": "git",
     "url": "http://github.com/ZECTBynmo/node-core-audio.git"
-  },
-  "standard": {
-    "global": [
-      "newAudioEngine"
-    ]
   }
 }

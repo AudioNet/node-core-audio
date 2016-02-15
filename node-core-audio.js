@@ -1,136 +1,123 @@
+'use strict'
+
+// Setup
+const MAX_SUPPORTED_CHANNELS = 6
+const audioEngineMethods = [
+  'read',
+  'write',
+  'isActive',
+  'getSampleRate',
+  'getSampleRate',
+  'getInputDeviceIndex',
+  'getOutputDeviceIndex',
+  'getDeviceName',
+  'getNumDevices',
+  'setInputDevice',
+  'setOutputDevice',
+  'getNumInputChannels',
+  'getNumOutputChannels'
+]
+
 // Exports
-var globalNamespace = {}
-
-;(function (exports) {
-  exports.createNewAudioEngine = function (options) {
-    var newAudioEngine = new AudioEngine(options)
-    return newAudioEngine
-  }
-}(typeof exports === 'object' && exports || globalNamespace))
-
-var FFT = require('fft')
-
-// var SHOW_DEBUG_PRINTS = true
-// We need to allocate our process audio for the max channel,
-// so we have to set some reasonable limit
-var MAX_SUPPORTED_CHANNELS = 6
-// A log function we can turn off
-// var log = function (a) { if (SHOW_DEBUG_PRINTS) console.log(a) }
-
-// Check whether a variable exists
-// var exists = function (a) { return typeof (a) == 'undefined' ? false : true }
+module.exports = {
+  createNewAudioEngine: (options) => new AudioEngine(options)
+}
 
 // AudioEngine constructor
 function AudioEngine (options) {
-  var self = this
-  var audioEngineImpl = require(__dirname + '/build/Release/NodeCoreAudio')
-
-  var defaultOptions = {
+  let self = this
+  let audioEngineImpl = require(__dirname + '/build/Release/NodeCoreAudio')
+  options = options || {
     inputChannels: 1,
     outputChannels: 2,
     framesPerBuffer: 1024,
     useMicrophone: true
   }
-
-  self.options = options || defaultOptions
-  self.audioEngine = audioEngineImpl.createAudioEngine(self.options)
+  self.audioEngine = audioEngineImpl.createAudioEngine(options)
+  // map audioEngine instance methods
+  audioEngineMethods.forEach((methodName) => {
+    self[methodName] = (args) => Array.isArray(args)
+      ? self.audioEngine[methodName](...args)
+      : self.audioEngine[methodName](args)
+  })
   self.options = self.audioEngine.getOptions()
-  self.audioStreamer
   self.processingCallbacks = []
   self.uiUpdateCallbacks = []
   self.outputBuffer = []
   self.tempBuffer = []
   self.processBuffer = []
-  FFT.Complex = FFT.complex
-  self.fft = new FFT.Complex(self.audioEngine.getOptions().framesPerBuffer, false)
-  self.fftBuffer = []
 
   function validateOutputBufferStructure (buffer) {
+    // verify we have a buffer
     if (buffer === undefined) {
-      console.log("Audio processing function didn't return an output buffer")
+      console.log('Audio processing function didn\'t return an output buffer')
       return false
     }
-
-    if (!self.audioEngine.getOptions().interleaved) {
-      if (buffer.length > self.options.inputChannels) {
-        console.log('Output buffer has info for too many channels')
-        return false
-      } else if (buffer.length < self.options.inputChannels) {
-        console.log("Output buffer doesn't have data for enough channels")
-        return false
-      }
-
-      if (typeof (buffer[0]) !== 'object') {
-        console.log("Output buffer not setup correctly, buffer[0] isn't an array")
-        return false
-      }
-
-      if (typeof (buffer[0][0]) !== 'number') {
-        console.log("Output buffer not setup correctly, buffer[0][0] isn't a number")
-        return false
-      }
-    } else {
-      if (typeof (buffer[0]) !== 'number') {
-        console.log("Output buffer not setup correctly, buffer[0] isn't a number")
-        return false
-      }
+    // verify input channel count
+    if (buffer.length !== self.options.inputChannels) {
+      console.log(
+        (buffer.length > self.options.inputChannels)
+          ? 'Output buffer has info for too many channels'
+          : 'Output buffer doesn\'t have data for enough channels'
+        )
+      return false
     }
-
+    // verify buffer types
+    let isBufferArray = (typeof (buffer[0]) !== 'object')
+    if (isBufferArray || typeof (buffer[0][0]) !== 'number') {
+      console.log(
+        (isBufferArray)
+          ? 'Output buffer not setup correctly, buffer[0] isn\'t an array'
+          : 'Output buffer not setup correctly, buffer[0][0] isn\'t a number'
+        )
+      return false
+    }
     return true
   }
 
   // Allocate a processing buffer for each of our channels
-  for (var iChannel = 0; iChannel < MAX_SUPPORTED_CHANNELS; ++iChannel) {
+  for (let iChannel = 0; iChannel < MAX_SUPPORTED_CHANNELS; ++iChannel) {
     self.processBuffer[iChannel] = []
   }
 
   // Start polling the audio engine for data as fast as we can
   self.processAudio = self.getProcessAudio()
 
-  setInterval(function () {
+  let processBuffer = () => {
     if (self.audioEngine.isBufferEmpty()) {
       // Try to process audio
-      var input = self.audioEngine.read()
-
-      var outputBuffer = self.processAudio(input)
-
+      let input = self.audioEngine.read()
+      let outputBuffer = self.processAudio(input)
       if (validateOutputBufferStructure(outputBuffer)) {
         self.audioEngine.write(outputBuffer)
       }
-
       // Call our UI updates now that all the DSP work has been done
-      for (var iUpdate = 0; iUpdate < self.uiUpdateCallbacks.length; ++iUpdate) {
-        self.uiUpdateCallbacks[iUpdate]()
-      }
+      self.uiUpdateCallbacks.forEach((cb) => cb())
     }
-  }, 1)
+  }
+  setInterval(processBuffer, 1)
 }
 
 // Returns our main audio processing function
 AudioEngine.prototype.getProcessAudio = function () {
-  var self = this
-  var options = self.audioEngine.getOptions()
-  var numChannels = options.inputChannels
-  // var fftBuffer = self.fftBuffer
+  let self = this
+  let options = self.audioEngine.getOptions()
+  let numChannels = options.inputChannels
 
-  var processAudio = function (inputBuffer) {
+  let processAudio = function (inputBuffer) {
     // If we don't have any processing callbacks, just get out
     if (self.processingCallbacks.length === 0) return inputBuffer
-    var processBuffer = inputBuffer
-    // if(!self.options.interleaved) {
-    //	deInterleave(inputBuffer, processBuffer, self.options.framesPerBuffer, numChannels)
-    // }
+    let processBuffer = inputBuffer
     // Call through to all of our processing callbacks
-    for (var iCallback = 0; iCallback < self.processingCallbacks.length; ++iCallback) {
-      processBuffer = self.processingCallbacks[iCallback](processBuffer)
-    }
-    if (typeof (self.audioStreamer) !== 'undefined') {
-      self.audioStreamer.streamAudio(processBuffer, self.options.framesPerBuffer, numChannels)
+    self.processingCallbacks.forEach((cb) => processBuffer = cb(processBuffer))
+    if (self.audioStreamer !== undefined) {
+      self.audioStreamer.streamAudio(
+        processBuffer, self.options.framesPerBuffer, numChannels
+      )
     }
     // Return our output audio to the sound card
     return processBuffer
   }
-
   return processAudio
 }
 
@@ -155,113 +142,3 @@ AudioEngine.prototype.addAudioCallback = function (callback) {
 AudioEngine.prototype.addUpdateCallback = function (callback) {
   this.uiUpdateCallbacks.push(callback)
 }
-
-// Returns whether the audio engine is active
-AudioEngine.prototype.isActive = function () {
-  return this.audioEngine.isActive()
-}
-
-// Returns the sample rate of the audio engine
-AudioEngine.prototype.getSampleRate = function () {
-  return this.audioEngine.getSampleRate()
-}
-
-// Returns the index of the input audio device
-AudioEngine.prototype.getInputDeviceIndex = function () {
-  return this.audioEngine.getInputDeviceIndex()
-}
-
-// Returns the index of the output audio device
-AudioEngine.prototype.getOutputDeviceIndex = function () {
-  return this.audioEngine.getOutputDeviceIndex()
-}
-
-// Returns the name of a given device
-AudioEngine.prototype.getDeviceName = function (deviceId) {
-  return this.audioEngine.getDeviceName(deviceId)
-}
-
-// Returns the total number of audio devices
-AudioEngine.prototype.getNumDevices = function () {
-  return this.audioEngine.getNumDevices()
-}
-
-// Sets the input audio device
-AudioEngine.prototype.setInputDevice = function (deviceId) {
-  return this.audioEngine.setInputDevice(deviceId)
-}
-
-// Sets the output audio device
-AudioEngine.prototype.setOutputDevice = function (deviceId) {
-  return this.audioEngine.setOutputDevice(deviceId)
-}
-
-// Returns the number of input channels
-AudioEngine.prototype.getNumInputChannels = function () {
-  return this.audioEngine.getNumInputChannels()
-}
-
-// Returns the number of output channels
-AudioEngine.prototype.getNumOutputChannels = function () {
-  return this.audioEngine.getNumOutputChannels()
-}
-
-// Read audio samples from the sound card
-AudioEngine.prototype.read = function () {
-  return this.audioEngine.read()
-}
-
-// Write some audio samples to the sound card
-AudioEngine.prototype.write = function () {
-  this.audioEngine.write()
-}
-
-// Splits a 1d buffer into its channel components
-// function deInterleave (inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels) {
-//   // If the number of channels doesn't match, setup the output buffer
-//   var iChannel
-//   if (inputBuffer.length !== outputBuffer.length) {
-//     outputBuffer = undefined
-//     outputBuffer = []
-//     for (iChannel = 0; iChannel < inputBuffer.length; ++iChannel) {
-//       outputBuffer[iChannel] = []
-//     }
-//   }
-//
-//   if (numChannels < 2) {
-//     outputBuffer[0] = inputBuffer
-//     return
-//   }
-//
-//   for (iChannel = 0; iChannel < numChannels; iChannel += numChannels) {
-//     for (var iSample = 0; iSample < numSamplesPerBuffer; ++iSample) {
-//       outputBuffer[iChannel][iSample] = inputBuffer[iSample + iChannel]
-//     }
-//   }
-// }
-
-// Joins multidimensional array into single buffer
-// function interleave (inputBuffer, outputBuffer, numSamplesPerBuffer, numChannels) {
-//   if (numChannels < 2) {
-//     outputBuffer = inputBuffer
-//     return
-//   }
-//   var iChannel
-//   // If the number of channels doesn't match, setup the output buffer
-//   if (inputBuffer.length !== outputBuffer.length) {
-//     outputBuffer = undefined
-//     outputBuffer = []
-//     for (iChannel = 0; iChannel < inputBuffer.length; ++iChannel) {
-//       outputBuffer[iChannel] = []
-//     }
-//   }
-//
-//   for (iChannel = 0; iChannel < numChannels; ++iChannel) {
-//     if (inputBuffer[iChannel] === undefined) break
-//
-//     for (var iSample = 0; iSample < numSamplesPerBuffer; iSample += numChannels) {
-//       outputBuffer[iSample + iChannel] = inputBuffer[iChannel][iSample]
-//     }
-//   }
-//
-// }
