@@ -7,7 +7,6 @@ const audioEngineMethods = [
   'write',
   'isActive',
   'getSampleRate',
-  'getSampleRate',
   'getInputDeviceIndex',
   'getOutputDeviceIndex',
   'getDeviceName',
