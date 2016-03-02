@@ -2,9 +2,6 @@ var AudioEngineWrapper = require( __dirname + '/build/Release/NodeCoreAudio');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 
-var SHOW_DEBUG_PRINTS      = true,
-    MAX_SUPPORTED_CHANNELS = 6;
-
 var DEFAULT_OPTIONS = {
 	inputChannels: 1,
 	outputChannels: 2,
