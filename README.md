@@ -6,8 +6,6 @@ A C++ extension for node.js that gives javascript access to audio buffers and ba
 
 Right now, it's basically a node.js binding for PortAudio.
 
-NOTE: Looking for help maintaining this repository!
-
 ## Installation
 
 ```
