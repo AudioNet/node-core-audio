@@ -10,30 +10,46 @@
 #include <vector>
 #include <node_object_wrap.h>
 #include <nan.h>
-using namespace v8; using namespace std;
+#include <uv.h>
+#include <node.h>
+#include <stdlib.h>
 
-#define DEFAULT_SAMPLE_RATE         (44100)
+#ifdef __linux__
+	#include <unistd.h>
+	#include <string.h>
+#endif
+
+#define DEBUG 1
+
+using namespace v8;
+using namespace std;
+
+#define AUDIO_ENGINE_CLASSNAME     "AudioEngine"
+
+#define DEFAULT_SAMPLE_RATE        (44100)
 #define DEFAULT_SAMPLE_FORMAT      paFloat32
 #define DEFAULT_FRAMES_PER_BUFFER  (256)
 #define DEFAULT_NUM_BUFFERS        (8)
+
+#define VALIDATE_PROPERTY(options, name, type, out) ({\
+	if (Nan::HasOwnProperty(options, Nan::New<String>(name).ToLocalChecked()).FromMaybe(false)) \
+		out = Nan::To<type>(Nan::Get(options, Nan::New<String>(name).ToLocalChecked()).ToLocalChecked()).FromJust(); \
+})
 
 namespace Audio {
 
 	//////////////////////////////////////////////////////////////////////////
 	//! Core audio functionality
-	class AudioEngine : public node::ObjectWrap {
+	class AudioEngine : public Nan::ObjectWrap {
 	public:
 
-		AudioEngine( Local<Object> options );
+		AudioEngine(Local<Object> options);
 
 		//! Initialize our node object
 		static void Init(v8::Handle<v8::Object> target);
 		//! Create a new instance of the audio engine
 		//static v8::Handle<v8::Value> NewInstance(const v8::Arguments& args);
         static NAN_METHOD(NewInstance);
-
-		Isolate* GetIsolate() { return m_pIsolate; }
-		Locker* GetLocker() { return m_pLocker; }
 
 		//! Run the main blocking audio loop
 		void RunAudioLoop();
@@ -42,6 +58,14 @@ namespace Audio {
 
 	private:
 		static void initializePortAudio();
+
+		void setDefaultOptions();
+		void initializeStream();
+		void initializeInputBuffer();
+		void reinitializeStream();
+
+		void printOptions();
+
 		static v8::Persistent<v8::Function> constructor;
 		//static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
         static NAN_METHOD(New);
@@ -73,8 +97,8 @@ namespace Audio {
 
 		static void afterWork(uv_work_t* handle, int status) {};
 
-		void applyOptions( Local<Object> options );				//!< Sets the given options and restarts the audio stream if necessary
-		void wrapObject( v8::Handle<v8::Object> object );		//!< Wraps a handle into an object
+		void applyOptions(Local<Object> options);				//!< Sets the given options and restarts the audio stream if necessary
+		void wrapObject(v8::Handle<v8::Object> object);		//!< Wraps a handle into an object
 
 		void queueOutputBuffer( Handle<Array> result );			//!< Queues up an array to be sent to the sound card
 		void setSample( int position, Handle<Value> sample );	//!< Sets a sample in the queued output buffer
@@ -82,42 +106,37 @@ namespace Audio {
 		Local<Array> getInputBuffer();							//!< Returns a v8 array filled with input samples
 		Handle<Number> getSample( int position );				//!< Returns a sound card sample converted to a v8 Number
 
-		PaStream *m_pPaStream;				//!< The PortAudio stream object
-		PaStreamParameters m_inputParams,	//!< PortAudio stream parameters
-						   m_outputParams;
+		PaStream *stream;				//!< The PortAudio stream object
+		PaStreamParameters streamInputParams,	//!< PortAudio stream parameters
+						   streamOutputParams;
 
-		Local<Array> m_hInputBuffer;		//!< Our pre-allocated input buffer
+		Local<Array> inputBuffer;		//!< Our pre-allocated input buffer
 
-		uv_thread_t ptStreamThread;			//!< Our stream thread
+		uv_thread_t streamThread;			//!< Our stream thread
 
 		uv_mutex_t m_mutex;					//!< A mutex for transferring data between the DSP and UI threads
 
-		int m_uOutputChannels,		//!< Number of input channels
-			m_uInputChannels,		//!< Number of output channels
-			m_uInputDevice,			//!< Index of the current input device
-			m_uOutputDevice,		//!< Index of the current output device
-			m_uSampleRate,			//!< Current sample rate
-			m_uSamplesPerBuffer,	//!< Number of sample frames per process buffers
-			m_uNumBuffers,			//!< Number of sample buffers to keep ahead
-			m_uSampleFormat,		//!< Index of the current sample format
-			m_uSampleSize;			//!< Number of bytes per sample frame
+		int  outputChannels,     // Number of input channels
+			 inputChannels,      // Number of output channels
+			 inputDevice,        // Index of the current input device
+			 outputDevice,       // Index of the current output device
+			 sampleRate,         // Current sample rate
+			 samplesPerBuffer,   // Number of sample frames per process buffers
+			 numBuffers,         // Number of sample buffers to keep ahead
+			 sampleFormat,       // Index of the current sample format
+			 sampleSize;         // Number of bytes per sample frame
+		bool inputOverflowed,    // Set when our buffers have overflowed
+			 outputUnderflowed,
+			 readMicrophone,     // TODO: document me !
+			 interleaved;        // Set when we're processing interleaved buffers
 
-		unsigned int m_uCurrentWriteBuffer, m_uCurrentReadBuffer;
-		unsigned int* m_uNumCachedOutputSamples;		//!< Number of samples we've queued up, outgoing to the sound card
+		unsigned int currentWriteBuffer, currentReadBuffer;
+		unsigned int* numCachedOutputSamples;		//!< Number of samples we've queued up, outgoing to the sound card
 
-		bool m_bInputOverflowed,			//!< Set when our buffers have overflowed
-			 m_bOutputUnderflowed,
-			 m_bReadMicrophone,
-			 m_bInterleaved;				//!< Set when we're processing interleaved buffers
+		char* cachedInputSampleBlock,		//!< Temp buffer to hold buffer results
+			** cachedOutputSampleBlock,
+			* cachedOutputSampleBlockForWriting;
 
-		char* m_cachedInputSampleBlock,		//!< Temp buffer to hold buffer results
-			** m_cachedOutputSampleBlock,
-			* m_cachedOutputSampleBlockForWriting;
+	};
 
-		Isolate* m_pIsolate;
-
-		Locker* m_pLocker;
-
-	}; // end class AudioEngine
-
-} // end namespace Audio
+}
