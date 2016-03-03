@@ -1,4 +1,4 @@
-var AudioEngineWrapper = require( __dirname + '/build/Release/NodeCoreAudio');
+var CoreAudio = require( __dirname + '/build/Release/NodeCoreAudio');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 
@@ -24,7 +24,7 @@ function AudioEngine(options, debug) {
 	this.debug = (typeof debug === 'undefined' ? false : debug);
 
 	// Initialize the native audio engine
-	this.engine = AudioEngineWrapper.createAudioEngine(options || DEFAULT_OPTIONS);
+	this.engine = new CoreAudio.AudioEngine(options || DEFAULT_OPTIONS);
 
 	// Processing callbacks
 	this.callbacks = [];
@@ -158,16 +158,16 @@ AudioEngine.prototype.isActive = function() {
  * @param {integer} id - Device ID.
  * @return {string} - Name of the device.
  */
-AudioEngine.prototype.getDeviceName = function(id) {
-	return this.engine.getDeviceName(id);
+AudioEngine.getDeviceName = function(id) {
+	return CoreAudio.AudioEngine.getDeviceName(id);
 };
 
 /**
  * Returns the total number of audio devices.
  * @return {integer} - Number of devices.
  */
-AudioEngine.prototype.getNumDevices = function() {
-	return this.engine.getNumDevices();
+AudioEngine.getNumDevices = function() {
+	return CoreAudio.AudioEngine.getNumDevices();
 };
 
 /**
@@ -183,7 +183,7 @@ AudioEngine.prototype.setInputDevice = function(id) {
  * @param {integer} id - Device ID.
  */
 AudioEngine.prototype.setOutputDevice = function(id) {
-	return this.audioEngine.setOutputDevice(id);
+	return this.engine.setOutputDevice(id);
 };
 
 /**
@@ -191,7 +191,7 @@ AudioEngine.prototype.setOutputDevice = function(id) {
  * @return {integer} - Number of input channels.
  */
 AudioEngine.prototype.getNumInputChannels = function() {
-	return this.audioEngine.getNumInputChannels();
+	return this.engine.getNumInputChannels();
 };
 
 /**
@@ -199,7 +199,7 @@ AudioEngine.prototype.getNumInputChannels = function() {
  * @return {integer} - Number of output channels.
  */
 AudioEngine.prototype.getNumOutputChannels = function() {
-	return this.audioEngine.getNumOutputChannels();
+	return this.engine.getNumOutputChannels();
 };
 
 /**

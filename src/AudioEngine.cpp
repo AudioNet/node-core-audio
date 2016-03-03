@@ -19,6 +19,8 @@
 	#include <string.h>
 #endif
 
+#define AUDIO_ENGINE_CLASSNAME "AudioEngine"
+
 using namespace v8; using namespace std;
 
 Persistent<Function> Audio::AudioEngine::constructor;
@@ -65,9 +67,6 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	for( int iChannel=0; iChannel<m_uInputChannels; iChannel++ )
 		m_hInputBuffer->Set( iChannel, Nan::New<Array>(m_uSamplesPerBuffer) );
 
-	// Initialize our audio core
-	PaError initErr = Pa_Initialize();
-
 	m_uInputDevice = Pa_GetDefaultInputDevice();
 	if( m_uInputDevice == paNoDevice ) {
 		Nan::ThrowTypeError("Error: No default input device");
@@ -77,9 +76,6 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	if( m_uOutputDevice == paNoDevice ) {
 		Nan::ThrowTypeError("Error: No default output device");
 	}
-
-	if( initErr != paNoError )
-		Nan::ThrowTypeError("Failed to initialize audio engine");
 
 	applyOptions( options );
 
@@ -410,45 +406,49 @@ void Audio::AudioEngine::RunAudioLoop(){
 	}
 } // end AudioEngine::RunAudioLoop()
 
+/**
+ * Initialize PortAudio or throw a native node error.
+ */
+void Audio::AudioEngine::initializePortAudio() {
+	if (Pa_Initialize() != paNoError) {
+		Nan::ThrowTypeError("Failed to initialize audio engine");
+	}
+}
 
-//////////////////////////////////////////////////////////////////////////////
-/*! Initialize our node object */
+/**
+ * Initialize AudioEngine node object. This helper defines every methods,
+ * properties. Futhermore it launches PortAudio initialization.
+ */
 NAN_MODULE_INIT(Audio::AudioEngine::Init) {
+	Local<FunctionTemplate> aet;
 
-	// Prepare constructor template
-	Local<FunctionTemplate> functionTemplate = Nan::New<FunctionTemplate> (Audio::AudioEngine::New );
-	functionTemplate->SetClassName( Nan::New<String>("AudioEngine").ToLocalChecked() );
-	functionTemplate->InstanceTemplate()->SetInternalFieldCount( 1 );
+	// First initialize PortAudio
+	Audio::AudioEngine::initializePortAudio();
 
+	// Prepare AudioEngine template (aet)
+	aet = Nan::New<FunctionTemplate>(Audio::AudioEngine::New);
+	aet->SetClassName(Nan::New<String>(AUDIO_ENGINE_CLASSNAME).ToLocalChecked());
+	aet->InstanceTemplate()->SetInternalFieldCount( 1 );
 
-    //Local<FunctionTemplate> constructorHandle = Nan::New(constructor);
-    //target->Set(Nan::New<String>("AudioEngine"), functionTemplate->GetFunction());
+	// Static methods
+	Nan::SetMethod(aet, "getDeviceName", Audio::AudioEngine::getDeviceName);
+	Nan::SetMethod(aet, "getNumDevices", Audio::AudioEngine::getNumDevices);
 
-    // Get
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isActive"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getDeviceName"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getNumDevices"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getNumDevices)->GetFunction() );
-    Nan::SetPrototypeMethod(functionTemplate, "isActive", Audio::AudioEngine::isActive);
-    Nan::SetPrototypeMethod(functionTemplate, "getDeviceName", Audio::AudioEngine::getDeviceName);
-    Nan::SetPrototypeMethod(functionTemplate, "getNumDevices", Audio::AudioEngine::getNumDevices);
+	// Class methods
+	// NOTE: isActive and isBufferEmpty could be replaced by native getters
+	Nan::SetPrototypeMethod(aet, "setOptions",    Audio::AudioEngine::setOptions);
+	Nan::SetPrototypeMethod(aet, "getOptions",    Audio::AudioEngine::getOptions);
+	Nan::SetPrototypeMethod(aet, "write",         Audio::AudioEngine::write);
+	Nan::SetPrototypeMethod(aet, "read",          Audio::AudioEngine::read);
+	Nan::SetPrototypeMethod(aet, "isBufferEmpty", Audio::AudioEngine::isBufferEmpty);
+	Nan::SetPrototypeMethod(aet, "isActive",      Audio::AudioEngine::isActive);
 
-	// Set
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("setOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::setOptions)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getOptions)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("write"), Nan::New<FunctionTemplate>(Audio::AudioEngine::write)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("read"), Nan::New<FunctionTemplate>(Audio::AudioEngine::read)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isBufferEmpty"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
-    Nan::SetPrototypeMethod(functionTemplate, "setOptions", Audio::AudioEngine::setOptions);
-    Nan::SetPrototypeMethod(functionTemplate, "getOptions", Audio::AudioEngine::getOptions);
-    Nan::SetPrototypeMethod(functionTemplate, "write", Audio::AudioEngine::write);
-    Nan::SetPrototypeMethod(functionTemplate, "read", Audio::AudioEngine::read);
-    Nan::SetPrototypeMethod(functionTemplate, "isBufferEmpty", Audio::AudioEngine::isBufferEmpty);
+	// TODO: Why ? What ?
+	constructor.Reset(Isolate::GetCurrent(), aet->GetFunction());
 
-	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
-    //Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(EOLFinder::New);
-//    NanAssignPersistent(constructor, functionTemplate->GetFunction());
-    constructor.Reset(Isolate::GetCurrent(), functionTemplate->GetFunction());
-} // end AudioEngine::Init()
+	// Publish object/function as property of the module
+	Nan::Set(target, Nan::New(AUDIO_ENGINE_CLASSNAME).ToLocalChecked(), Nan::GetFunction(aet).ToLocalChecked());
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -647,6 +647,7 @@ void Audio::AudioEngine::wrapObject( v8::Handle<v8::Object> object ) {
 /*! OOL Destructor */
 Audio::AudioEngine::~AudioEngine() {
 	// Kill PortAudio
+	// TODO: move that
 	PaError err = Pa_Terminate();
 
 	if( err != paNoError )

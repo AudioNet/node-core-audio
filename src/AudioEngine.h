@@ -41,6 +41,7 @@ namespace Audio {
 		~AudioEngine();		//!< OOL Destructor
 
 	private:
+		static void initializePortAudio();
 		static v8::Persistent<v8::Function> constructor;
 		//static v8::Handle<v8::Value> New( const v8::Arguments& args );	//!< Create a v8 object
         static NAN_METHOD(New);
