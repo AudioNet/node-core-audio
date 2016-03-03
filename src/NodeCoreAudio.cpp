@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // NodeCoreAudio.cpp : Main module source, declares all exports
-// 
+//
 //////////////////////////////////////////////////////////////////////////////
 
 #include <v8.h>
@@ -14,7 +14,7 @@ using namespace v8;
 #include <stdio.h>
 
 /*
-//Handle<Value> CreateEngine(const Arguments& args) 
+//Handle<Value> CreateEngine(const Arguments& args)
 NAN_METHOD(CreateEngine)
 {
     //HandleScope scope;
@@ -25,14 +25,13 @@ NAN_METHOD(CreateEngine)
 */
 
 void InitAll(Handle<Object> target) {
-    Audio::AudioEngine::Init( target );
+    Audio::AudioEngine::Init(target);
 
-    Nan::SetMethod(target, "createAudioEngine", Audio::AudioEngine::NewInstance);
     //NODE_SET_METHOD(target, "createAudioEngine", CreateEngine);
     //target->Set( NanNew<String>("createAudioEngine"), CreateEngine);
     //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(CreateEngine)->GetFunction() );
     //target->Set( NanNew<String>("createAudioEngine"), NanNew<FunctionTemplate>(Audio::AudioEngine::NewInstance)->GetFunction() );
-    
+
     target->Set( Nan::New<String>("sampleFormatFloat32").ToLocalChecked(), Nan::New<Number>(1));
     target->Set( Nan::New<String>("sampleFormatInt32").ToLocalChecked(), Nan::New<Number>(2) );
     target->Set( Nan::New<String>("sampleFormatInt24").ToLocalChecked(), Nan::New<Number>(4) );
