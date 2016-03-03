@@ -31,10 +31,9 @@ using namespace std;
 #define DEFAULT_FRAMES_PER_BUFFER  (256)
 #define DEFAULT_NUM_BUFFERS        (8)
 
-#define VALIDATE_PROPERTY(options, name, type, out) ({\
-	if (Nan::HasOwnProperty(options, Nan::New<String>(name).ToLocalChecked()).FromMaybe(false)) \
-		out = Nan::To<type>(Nan::Get(options, Nan::New<String>(name).ToLocalChecked()).ToLocalChecked()).FromJust(); \
-})
+#define VALIDATE_PROPERTY(options, name, type, out) ( \
+	out = (Nan::HasOwnProperty(options, Nan::New<String>(name).ToLocalChecked()).FromMaybe(false) ? \
+		Nan::To<type>(Nan::Get(options, Nan::New<String>(name).ToLocalChecked()).ToLocalChecked()).FromJust() : out ))
 
 namespace Audio {
 
