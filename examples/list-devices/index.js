@@ -7,5 +7,5 @@
 var NodeCoreAudio = require('../../');
 
 for (var i = 0; i < NodeCoreAudio.getNumDevices(); i++) {
-	console.log(NodeCoreAudio.getDeviceName(i));
+	console.log(i, NodeCoreAudio.getDeviceName(i));
 }
