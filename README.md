@@ -9,6 +9,10 @@ Right now, it's basically a node.js binding for PortAudio.
 
 NOTE: Looking for help maintaining this repository!
 
+Active contributors:
+
+- [rmedaer](https://github.com/rmedaer)
+
 Installation
 =====
 
