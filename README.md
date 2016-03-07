@@ -1,9 +1,8 @@
-Node Core Audio
-==================
+# Node Core Audio
 
 ![alt tag](https://nodei.co/npm-dl/node-core-audio.png)
 
-A C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionality
+A C++ extension for node.js that gives javascript access to audio buffers and basic audio processing functionalities.
 
 Right now, it's basically a node.js binding for PortAudio.
 
@@ -13,15 +12,19 @@ Active contributors:
 
 - [rmedaer](https://github.com/rmedaer)
 
-Installation
-=====
+## Installation
 
 ```
 npm install node-core-audio
 ```
 
-Basic Usage
-=====
+For Debian/Ubuntu users:
+
+```
+apt-get install portaudio19-dev libportaudio2 libportaudiocpp0
+```
+
+## Basic Usage
 
 Below is the most basic use of the audio engine. We create a new instance of
 node-core-audio, and then give it our processing function. The audio engine
@@ -30,43 +33,25 @@ the sound card.
 
 ```javascript
 // Create a new instance of node-core-audio
-var coreAudio = require("node-core-audio");
+var NodeCoreAudio = require("node-core-audio");
 
 // Create a new audio engine
-var engine = coreAudio.createNewAudioEngine();
+var engine = new NodeCoreAudio();
 
 // Add an audio processing callback
 // This function accepts an input buffer coming from the sound card,
-// and returns an ourput buffer to be sent to your speakers.
+// and returns an output buffer to be sent to your speakers.
 //
 // Note: This function must return an output buffer
-function processAudio( inputBuffer ) {
-	console.log( "%d channels", inputBuffer.length );
-	console.log( "Channel 0 has %d samples", inputBuffer[0].length );
+engine.addAudioCallback(function(buffer) {
+	console.log('%d channels', buffer.length);
+	console.log('Channel 0 has %d samples', buffer[0].length);
 
-	return inputBuffer;
-}
-
-engine.addAudioCallback( processAudio );
+	return buffer;
+});
 ```
 
-// Alternatively, you can read/write samples to the sound card manually
-```javascript
-var engine = coreAudio.createNewAudioEngine();
-
-// Grab a buffer
-var buffer = engine.read();
-
-// Silence the 0th channel
-for( var iSample=0; iSample<inputBuffer[0].length; ++iSample )
-	buffer[0][iSample] = 0.0;
-
-// Send the buffer back to the sound card
-engine.write( buffer );
-```
-
-Important! Processing Thread
-=====
+## Important ! About processing thread...
 When you are writing code inside of your audio callback, you are operating on
 the processing thread of the application. This high priority environment means you
 should try to think about performance as much as possible. Allocations and other
@@ -80,8 +65,8 @@ examples in this readme are not necessarily good practice as far as performance 
 
 The callback is only called if all buffers has been processed by the soundcard.
 
-Audio Engine Options
-=====
+## Audio Engine Options
+
 * sampleRate [default 44100]
   * Sample rate - number of samples per second in the audio stream
 * sampleFormat [default sampleFormatFloat32]
@@ -100,64 +85,38 @@ Audio Engine Options
 * outputDevice [default to Pa_GetDefaultOutputDevice]
   * Output device - id of the output device
 
-API
-=====
-First things first
+## API
+
+Import NodeCoreAudio:
 ```javascript
-var coreAudio = require("node-core-audio");
+var NodeCoreAudio = require("node-core-audio");
 ```
-Create and audio processing function
+
+Create an audio processing function:
 ```javascript
-function processAudio( inputBuffer ) {
-    // Just print the value of the first sample on the left channel
-    console.log( inputBuffer[0][0] );
+function audioProcessHandler(buffer) {
+    // Just bridge input buffer to output
+	return buffer;
 }
 ```
 
-Initialize the audio engine and setup the processing loop
+Initialize the audio engine and setup the processing loop:
 ```javascript
-var engine = coreAudio.createNewAudioEngine();
-
-engine.addAudioCallback( processAudio );
+var engine = new NodeCoreAudio();
+engine.addAudioCallback(audioProcessHandler);
 ```
 
-General functionality
-```javascript
-// Returns whether the audio engine is active
-bool engine.isActive();
+## Known Issues / TODO
 
-// Updates the parameters and restarts the engine. All keys from getOptions() are available.
-engine.setOptions({
-	inputChannels: 2
-});
-
-// Returns all parameters
-array engine.getOptions();
-
-// Reads buffer of the input of the soundcard and returns as array.
-// Note: this is a blocking call, don't take too long!
-array engine.read();
-
-// Writes the buffer to the output of the soundcard. Returns false if underflowed.
-// notic: blocking i/o
-bool engine.write(array input);
-
-// Returns the name of a given device
-string engine.getDeviceName( int inputDeviceIndex );
-
-// Returns the total number of audio devices
-int engine.getNumDevices();
-```
-
-Known Issues / TODO
-=====
-
+* Testing, almost testing !!!!
+* Generate documentation from source code both in JS and C/C++ files.
 * Add FFTW to C++ extension, so you can get fast FFT's from javascript, and also register for the FFT of incoming audio, rather than the audio itself
 * Add support for streaming audio over sockets
 
+## License
 
-License
-=====
 MIT - See LICENSE file.
 
 Copyright Mike Vegeto, 2013
+
+Refactored with ♥ by [Raphael Medaer](mailto:rme@escaux.com)
