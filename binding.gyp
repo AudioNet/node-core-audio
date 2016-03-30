@@ -15,7 +15,7 @@
         [
           'OS=="linux"', {
             "libraries" : [
-              '<(module_root_dir)/gyp/lib/libportaudio.a'
+              '-lportaudio'
             ],
             'cflags!': [ '-fno-exceptions' ],
             'cflags_cc!': [ '-fno-exceptions' ],
