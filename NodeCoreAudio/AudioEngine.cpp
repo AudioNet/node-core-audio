@@ -19,6 +19,10 @@
 	#include <string.h>
 #endif
 
+#ifdef __APPLE__
+	#include <unistd.h>
+#endif
+
 using namespace v8; using namespace std;
 
 Persistent<Function> Audio::AudioEngine::constructor;
