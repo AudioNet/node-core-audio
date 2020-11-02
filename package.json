@@ -10,7 +10,7 @@
   "dependencies": {
     "audio-streamer": ">= 0.1.0",
     "fft": "~0.2.1",
-    "nan": "^2.1.0",
+    "nan": "^2.14.2",
     "node-waveheader": "git://github.com/mrose17/node-waveheader.git",
     "portfinder": "0.2.1"
   },

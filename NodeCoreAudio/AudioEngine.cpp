@@ -32,12 +32,15 @@ static void do_work( void* arg ) {
 	pEngine->RunAudioLoop();
 }
 
+
 //////////////////////////////////////////////////////////////////////////////
 /*! Initialize */
+
 Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	m_uSampleSize(4),
 	m_pIsolate(Isolate::GetCurrent()),
 	m_pLocker(new Locker(Isolate::GetCurrent())) {
+	
 
 	PaError openStreamErr;
 	m_pPaStream = NULL;
@@ -67,7 +70,7 @@ Audio::AudioEngine::AudioEngine( Local<Object> options ) :
 	// Create V8 objects to hold our buffers
 	m_hInputBuffer = Nan::New<Array>( m_uInputChannels );
 	for( int iChannel=0; iChannel<m_uInputChannels; iChannel++ )
-		m_hInputBuffer->Set( iChannel, Nan::New<Array>(m_uSamplesPerBuffer) );
+		m_hInputBuffer->Set(this->m_pIsolate->GetCurrentContext(), iChannel, Nan::New<Array>(m_uSamplesPerBuffer) );
 
 	// Initialize our audio core
 	PaError initErr = Pa_Initialize();
@@ -253,7 +256,7 @@ Local<Array> Audio::AudioEngine::getInputBuffer() {
 		m_hInputBuffer = Nan::New<Array>( m_uInputChannels * m_uSamplesPerBuffer );
 
 		for( int iSample=0; iSample<m_uSamplesPerBuffer*m_uInputChannels; ++iSample ) {
-			m_hInputBuffer->Set( iSample, getSample(iSample) );
+			m_hInputBuffer->Set( this->m_pIsolate->GetCurrentContext(), iSample, getSample(iSample) );
 		}
 	} else {
 		m_hInputBuffer = Nan::New<Array>( m_uInputChannels );
@@ -261,10 +264,10 @@ Local<Array> Audio::AudioEngine::getInputBuffer() {
 			auto tempBuffer = Local<Array>( Nan::New<Array>(m_uSamplesPerBuffer) );
 
 			for( int iSample=0; iSample<m_uSamplesPerBuffer; iSample++ ) {
-				tempBuffer->Set( iSample, getSample(iSample) );
+				tempBuffer->Set( this->m_pIsolate->GetCurrentContext(), iSample, getSample(iSample) );
 			}
 
-			m_hInputBuffer->Set( iChannel, tempBuffer );
+			m_hInputBuffer->Set( this->m_pIsolate->GetCurrentContext(), iChannel, tempBuffer );
 		}
 	}
 
@@ -274,7 +277,7 @@ Local<Array> Audio::AudioEngine::getInputBuffer() {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Returns a sound card sample converted to a v8 Number */
-Handle<Number> Audio::AudioEngine::getSample( int position ) {
+Local<Number> Audio::AudioEngine::getSample( int position ) {
   Nan::EscapableHandleScope scope;
 
 	Local<Number> sample;
@@ -312,30 +315,30 @@ Handle<Number> Audio::AudioEngine::getSample( int position ) {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Sets a sample in the queued output buffer */
-void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
+void Audio::AudioEngine::setSample( int position, Local<Value> sample ) {
 	int temp;
 	switch( m_uSampleFormat ) {
 	case paFloat32:
-		((float *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (float)sample->NumberValue();
+		((float *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (float)sample->NumberValue(this->m_pIsolate->GetCurrentContext()).FromJust();
 		break;
 
 	case paInt32:
-		((int *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int)sample->NumberValue();
+		((int *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int)sample->NumberValue(this->m_pIsolate->GetCurrentContext()).FromJust();
 		break;
 
 	case paInt24:
-		temp = (int)sample->NumberValue();
+		temp = (int)sample->NumberValue(this->m_pIsolate->GetCurrentContext()).FromJust();
 		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 0] = temp >> 16;
 		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 1] = temp >> 8;
 		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][3*position + 2] = temp;
 		break;
 
 	case paInt16:
-		((int16_t *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int16_t)sample->NumberValue();
+		((int16_t *)m_cachedOutputSampleBlock[m_uCurrentWriteBuffer])[position] = (int16_t)sample->NumberValue(this->m_pIsolate->GetCurrentContext()).FromJust();
 		break;
 
 	default:
-		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][position] = (char)sample->NumberValue();
+		m_cachedOutputSampleBlock[m_uCurrentWriteBuffer][position] = (char)sample->NumberValue(this->m_pIsolate->GetCurrentContext()).FromJust();
 		break;
 	}
 } // end AudioEngine::setSample()
@@ -343,19 +346,21 @@ void Audio::AudioEngine::setSample( int position, Handle<Value> sample ) {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Queues up an array to be sent to the sound card */
-void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
+void Audio::AudioEngine::queueOutputBuffer( Local<Array> result ) {
 	// Reset our record of the number of cached output samples
 	m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = 0;
 
 	if( m_bInterleaved ) {
 		for( int iSample=0; iSample<m_uSamplesPerBuffer*m_uOutputChannels; ++iSample )
-			setSample( iSample, result->Get(iSample) );
+		{
+			setSample( iSample, result->Get(result->GetIsolate()->GetCurrentContext(), iSample).ToLocalChecked());
+		}
 
 		m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = result->Length()/m_uOutputChannels;
 
 	} else {
 		// Validate the structure of the output buffer array
-		if( !result->Get(0)->IsArray() ) {
+		if( !result->Get(result->GetIsolate()->GetCurrentContext(), 0).ToLocalChecked()->IsArray() ) {
 			Nan::ThrowTypeError("Output buffer not properly setup, 0th channel is not an array");
 			return;
 		}
@@ -365,12 +370,12 @@ void Audio::AudioEngine::queueOutputBuffer( Handle<Array> result ) {
 		for( int iChannel=0; iChannel<m_uOutputChannels; ++iChannel ) {
 			for( int iSample=0; iSample<m_uSamplesPerBuffer; ++iSample ) {
 
-				item = Local<Array>::Cast( result->Get(iChannel) );
+				item = Local<Array>::Cast( result->Get(result->GetIsolate()->GetCurrentContext(), iChannel).ToLocalChecked() );
 				if( item->IsArray() ) {
 					if( item->Length() > m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] )
 						m_uNumCachedOutputSamples[m_uCurrentWriteBuffer] = item->Length();
 
-					setSample( iSample, item->Get(iSample) );
+					setSample( iSample, item->Get(result->GetIsolate()->GetCurrentContext(), iSample).ToLocalChecked() );
 				}
 			} // end for each sample
 		} // end for each channel
@@ -418,6 +423,8 @@ void Audio::AudioEngine::RunAudioLoop(){
 //////////////////////////////////////////////////////////////////////////////
 /*! Initialize our node object */
 NAN_MODULE_INIT(Audio::AudioEngine::Init) {
+	Isolate * isolate = target->GetIsolate();
+	v8::Local<v8::Context> context = target->CreationContext();
 
 	// Prepare constructor template
 	Local<FunctionTemplate> functionTemplate = Nan::New<FunctionTemplate> (Audio::AudioEngine::New );
@@ -429,19 +436,19 @@ NAN_MODULE_INIT(Audio::AudioEngine::Init) {
     //target->Set(Nan::New<String>("AudioEngine"), functionTemplate->GetFunction());
 
     // Get
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isActive"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getDeviceName"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getNumDevices"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getNumDevices)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("isActive"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isActive)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("getDeviceName"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getDeviceName)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("getNumDevices"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getNumDevices)->GetFunction() );
     Nan::SetPrototypeMethod(functionTemplate, "isActive", Audio::AudioEngine::isActive);
     Nan::SetPrototypeMethod(functionTemplate, "getDeviceName", Audio::AudioEngine::getDeviceName);
     Nan::SetPrototypeMethod(functionTemplate, "getNumDevices", Audio::AudioEngine::getNumDevices);
 
 	// Set
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("setOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::setOptions)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("getOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getOptions)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("write"), Nan::New<FunctionTemplate>(Audio::AudioEngine::write)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("read"), Nan::New<FunctionTemplate>(Audio::AudioEngine::read)->GetFunction() );
-	//functionTemplate->PrototypeTemplate()->Set( Nan::New<String>("isBufferEmpty"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("setOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::setOptions)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("getOptions"), Nan::New<FunctionTemplate>(Audio::AudioEngine::getOptions)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("write"), Nan::New<FunctionTemplate>(Audio::AudioEngine::write)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("read"), Nan::New<FunctionTemplate>(Audio::AudioEngine::read)->GetFunction() );
+	//functionTemplate->PrototypeTemplate()->Set( this->m_pIsolate->GetCurrentContext(), Nan::New<String>("isBufferEmpty"), Nan::New<FunctionTemplate>(Audio::AudioEngine::isBufferEmpty)->GetFunction() );
     Nan::SetPrototypeMethod(functionTemplate, "setOptions", Audio::AudioEngine::setOptions);
     Nan::SetPrototypeMethod(functionTemplate, "getOptions", Audio::AudioEngine::getOptions);
     Nan::SetPrototypeMethod(functionTemplate, "write", Audio::AudioEngine::write);
@@ -451,14 +458,19 @@ NAN_MODULE_INIT(Audio::AudioEngine::Init) {
 	//constructor = Persistent<Function>::New( functionTemplate->GetFunction() );
     //Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(EOLFinder::New);
 //    NanAssignPersistent(constructor, functionTemplate->GetFunction());
-    constructor.Reset(Isolate::GetCurrent(), functionTemplate->GetFunction());
+	constructor.Reset(isolate, functionTemplate->GetFunction(context).ToLocalChecked());
 } // end AudioEngine::Init()
 
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Create a new instance of the audio engine */
-//v8::Handle<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& info) {
-void Audio::AudioEngine::NewInstance(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+/*void Audio::AudioEngine::NewInstance(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	args.GetReturnValue().Set( Nan::New<String>("sampleFormatFloat32").ToLocalChecked());
+}*/
+//v8::Local<v8::Value> Audio::AudioEngine::NewInstance(const v8::Arguments& info) {
+Nan::NAN_METHOD_RETURN_TYPE Audio::AudioEngine::NewInstance(const Nan::FunctionCallbackInfo<v8::Value>& info){
+	Isolate* isolate = info.GetIsolate();
+  	v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     Nan::HandleScope scope;
 	//HandleScope scope;
 
@@ -467,17 +479,39 @@ void Audio::AudioEngine::NewInstance(const Nan::FunctionCallbackInfo<v8::Value>&
 	if( argc > 2 )
 		argc = 2;
 
-	Handle<Value>* argv = new Handle<Value>[argc];
+	Local<Value>* argv = new Local<Value>[argc];
 
 	argv[0] = info[0];
 	if( argc > 1 )
 		argv[1] = info[1];
 
 	//Local<Object> instance = constructor->NewInstance( argc, argv );
-	Local<Object> instance = Nan::New(constructor)->NewInstance(argc, argv);
+	// auto instance = Nan::New(constructor)->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
+	fprintf( stdout, "step 2" );
+	Local<Function> cons = Nan::New(constructor);
+	fprintf( stdout, "step 3" );
+	
 	//Local<Object> instance = constructor->NewInstance(argc, argv);
 
-	info.GetReturnValue().Set( instance );
+	//info.GetReturnValue().Set( instance.ToLocalChecked() );
+
+	if (info.IsConstructCall()) {
+		fprintf(stdout, "step 4.1");
+		// Invoked as constructor: `new MyObject(...)`
+		
+		Local<Object> options = info[0]->ToObject(context).ToLocalChecked();
+        AudioEngine* obj = new AudioEngine(options);
+		obj->Wrap(info.This());
+		info.GetReturnValue().Set(info.This());
+	} else {
+		fprintf(stdout, "step 4.2");
+		// Invoked as plain function `MyObject(...)`, turn into construct call.
+		const int argc = 1;
+		v8::Local<v8::Value> argv[argc] = {info[0]};
+		v8::Local<v8::Function> cons = Nan::New<v8::Function>(constructor);
+		info.GetReturnValue().Set(
+			cons->NewInstance(context, argc, argv).ToLocalChecked());
+	}
 } // end AudioEngine::NewInstance()
 
 //////////////////////////////////////////////////////////////////////////////
@@ -573,6 +607,7 @@ void Audio::AudioEngine::isActive(const Nan::FunctionCallbackInfo<v8::Value>& in
 //////////////////////////////////////////////////////////////////////////////
 /*! Get the name of an audio device with a given ID number */
 void Audio::AudioEngine::getDeviceName(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	Local<Context> context = info.GetIsolate()->GetCurrentContext();
     Nan::HandleScope scope;
 	//HandleScope scope;
 
@@ -582,7 +617,7 @@ void Audio::AudioEngine::getDeviceName(const Nan::FunctionCallbackInfo<v8::Value
 
 	Local<Number> deviceIndex = Local<Number>::Cast( info[0] );
 
-	const PaDeviceInfo* pDeviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue() );
+	const PaDeviceInfo* pDeviceInfo = Pa_GetDeviceInfo( (PaDeviceIndex)deviceIndex->NumberValue(context).ToChecked() );
 
 	info.GetReturnValue().Set( Nan::New<String>(pDeviceInfo->name).ToLocalChecked() );
 } // end AudioEngine::GetDeviceName()
@@ -642,7 +677,7 @@ void Audio::AudioEngine::restartStream() {
 
 //////////////////////////////////////////////////////////////////////////////
 /*! Wraps a handle into an object */
-void Audio::AudioEngine::wrapObject( v8::Handle<v8::Object> object ) {
+void Audio::AudioEngine::wrapObject( v8::Local<v8::Object> object ) {
 	ObjectWrap::Wrap( object );
 } // end AudioEngine::wrapObject()
 
